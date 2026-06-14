@@ -44,14 +44,12 @@ export default function App() {
         } catch {}
       }
 
-      ws.onclose = () => setTimeout(connect, 3000) // reconnect
+      ws.onclose = () => setTimeout(connect, 3000)
+      ws.onerror = () => ws.close() // triggers onclose → retry
       wsRef.current = ws
     }
 
-    // Only connect if running against the real server (not pure Vite dev with no WS)
-    if (import.meta.env.PROD || window.location.port === '3001') {
-      connect()
-    }
+    connect()
 
     return () => wsRef.current?.close()
   }, [])

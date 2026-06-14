@@ -15,6 +15,7 @@ export default function App() {
   const [fires,      setFires]      = useState([])
   const [weather,    setWeather]    = useState(null)
   const [fids,       setFids]       = useState({})
+  const [aiBrief,    setAiBrief]    = useState(null)
   const wsRef = useRef(null)
 
   /* ── WebSocket connection for live data push ── */
@@ -36,8 +37,10 @@ export default function App() {
             const ship = msg.payload
             setShips(prev => ({ ...prev, [ship.mmsi]: ship }))
           }
-          if (msg.type === 'weather') setWeather(msg.payload)
-          if (msg.type === 'fids')    setFids(msg.payload)
+          if (msg.type === 'weather')  setWeather(msg.payload)
+          if (msg.type === 'fids')     setFids(msg.payload)
+          if (msg.type === 'ai_brief') setAiBrief(msg.payload)
+          if (msg.type === 'news_batch') setNewsItems(msg.payload)
         } catch {}
       }
 
@@ -92,6 +95,7 @@ export default function App() {
           seismic={seismic}
           fires={fires}
           fids={fids}
+          aiBrief={aiBrief}
         />
         <RightSidebar financial={financial} />
       </div>

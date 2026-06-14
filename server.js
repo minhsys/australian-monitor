@@ -11,6 +11,8 @@ import { startFiresPoller }                          from './server/routes/fires
 import { fetchRealFinancial, startFinancialPoller }  from './server/routes/financial.js'
 import { fetchRealWeather, startWeatherPoller }       from './server/routes/weather.js'
 import { startFidsPoller }                            from './server/routes/fids.js'
+import { fetchRealNews }                              from './server/routes/news.js'
+import { startAiBriefPoller }                         from './server/routes/aiBrief.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app       = express()
@@ -52,10 +54,11 @@ function broadcast(type, payload) {
 
 wss.on('connection', (ws) => {
   console.log('[WS] Client connected')
-  // Send current state to new client
   if (store.news.length)  ws.send(JSON.stringify({ type: 'news_batch', payload: store.news.slice(0, 20) }))
   if (store.financial)    ws.send(JSON.stringify({ type: 'financial',  payload: store.financial }))
   if (store.feedStats)    ws.send(JSON.stringify({ type: 'feedStats',  payload: store.feedStats }))
+  if (store.weather)      ws.send(JSON.stringify({ type: 'weather',    payload: store.weather }))
+  if (store.aiBrief)      ws.send(JSON.stringify({ type: 'ai_brief',   payload: store.aiBrief }))
 })
 
 /* ─────────────────────────────────────────────
@@ -89,6 +92,19 @@ app.post('/api/force-poll', async (_, res) => {
   res.json({ ok: true })
 })
 
+app.post('/api/force-brief', async (_, res) => {
+  console.log('[API] Force AI brief triggered')
+  const { generateAiBrief } = await import('./server/routes/aiBrief.js')
+  const result = await generateAiBrief(store.news)
+  if (result) {
+    store.aiBrief = result
+    broadcast('ai_brief', result)
+    res.json({ ok: true, model: result.model })
+  } else {
+    res.status(503).json({ ok: false, error: 'No AI provider available' })
+  }
+})
+
 /* ─────────────────────────────────────────────
    DATA POLLERS — replace mock with real APIs
 ───────────────────────────────────────────── */
@@ -105,8 +121,12 @@ async function fetchFinancial() {
 
 /** News aggregation — RSS feeds (Phase 5) */
 async function fetchNews() {
-  // TODO: wire up rss-parser with AU_FEEDS catalogue
-  return getMockNews()
+  try {
+    return await fetchRealNews()
+  } catch (err) {
+    console.warn('[NEWS] Falling back to mock:', err.message)
+    return getMockNews()
+  }
 }
 
 /** Weather — Open-Meteo (Phase 4) */
@@ -225,6 +245,9 @@ async function bootstrap() {
   // Phase 4: real weather + FIDS
   startWeatherPoller(broadcast, store)
   startFidsPoller(broadcast, store)
+
+  // Phase 5: AI brief (fires 30s after boot once news is loaded)
+  startAiBriefPoller(broadcast, store)
 
   // ✅ Only NOW open the port
   server.listen(PORT, () => {

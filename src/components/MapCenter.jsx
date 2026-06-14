@@ -192,7 +192,7 @@ function redrawFires(group, fires) {
 }
 
 /* ── Component ── */
-export default function MapCenter({ newsItems, flights, ships, seismic, fires, fids }) {
+export default function MapCenter({ newsItems, flights, ships, seismic, fires, fids, aiBrief }) {
   const mapRef    = useRef(null)
   const groupsRef = useRef({})
   const [activeTab, setActiveTab] = useState('news')
@@ -306,7 +306,7 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
         </div>
 
         <div className="map-panel-content">
-          {activeTab === 'news'      && <NewsPanel newsItems={newsItems} />}
+          {activeTab === 'news'      && <NewsPanel newsItems={newsItems} aiBrief={aiBrief} />}
           {activeTab === 'transport' && <TransportPanel flights={flights} ships={ships} fids={fids} />}
           {activeTab === 'warning'   && <WarningPanel seismic={seismic} />}
         </div>

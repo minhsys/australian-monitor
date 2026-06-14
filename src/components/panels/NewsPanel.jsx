@@ -16,14 +16,12 @@ const MOCK_NEWS = [
   { id: 10,cat: 'security',  source: 'ASPI Strategist', time: '1h ago',  text: 'Analysis: Chinese naval activity in Coral Sea up 40% year-on-year — cable infrastructure proximity a concern' },
 ]
 
-const AI_BRIEF = `OSINT Brief (AI Heuristics): Aggregating 312 signals across 12 active sources. Dominant themes: ADF exercise tempo elevated (Tindal, Amberley); ASX under pressure from China PMI weakness — iron ore, coal sectors tracking lower. AFP/ASIO joint operation confirms ongoing foreign interference activity. Pacific watch: Solomons diplomatic realignment window. ACSC cyber advisory warrants immediate action across government networks. BOM tracking developing severe weather cell SE QLD. Intelligence density highest in Canberra (28 signals), Sydney (48 signals).`
-
 const CAT_CLASSES = {
   security: 'cat-security', economy: 'cat-economy', defence: 'cat-defence',
   politics: 'cat-politics', pacific: 'cat-pacific', cyber: 'cat-cyber', emergency: 'cat-emergency'
 }
 
-export default function NewsPanel({ newsItems }) {
+export default function NewsPanel({ newsItems, aiBrief }) {
   const [activeSource, setActiveSource]   = useState('domestic')
   const [activeCategory, setActiveCategory] = useState('All Feeds')
   const [searchQuery, setSearchQuery]     = useState('')
@@ -46,7 +44,7 @@ export default function NewsPanel({ newsItems }) {
           AI INTELLIGENCE DESK
         </div>
 
-        <button className="reanalyze-btn">
+        <button className="reanalyze-btn" onClick={() => fetch('/api/force-brief', { method: 'POST' }).catch(() => {})}>
           <RefreshCw size={9} />
           Re-Analyse
         </button>
@@ -93,9 +91,15 @@ export default function NewsPanel({ newsItems }) {
       {/* ── AI Brief (collapsible) ── */}
       {briefExpanded && activeCategory === 'All Feeds' && (
         <div className="ai-brief" onClick={() => setBriefExpanded(false)} style={{ cursor: 'pointer' }}>
-          {AI_BRIEF}
+          {aiBrief
+            ? aiBrief.brief
+            : 'Generating intelligence brief… (requires GPT4O_KEY or GEMINI_KEY)'
+          }
           <div className="ai-brief-status">
-            ↳ STATUS: LOCAL_HEURISTICS · Generated: {new Date().toLocaleTimeString('en-AU', { hour12: false })} (fresh) · AI Standby (click to collapse)
+            {aiBrief
+              ? `↳ ${aiBrief.model.toUpperCase()} · Generated: ${new Date(aiBrief.generatedAt).toLocaleTimeString('en-AU', { hour12: false })} · click to collapse`
+              : '↳ STATUS: PENDING · AI Standby'
+            }
           </div>
         </div>
       )}

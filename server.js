@@ -13,6 +13,7 @@ import { fetchRealWeather, startWeatherPoller }       from './server/routes/weat
 import { startFidsPoller }                            from './server/routes/fids.js'
 import { fetchRealNews }                              from './server/routes/news.js'
 import { startAiBriefPoller }                         from './server/routes/aiBrief.js'
+import { fetchCables }                                from './server/routes/cables.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app       = express()
@@ -90,6 +91,16 @@ app.post('/api/force-poll', async (_, res) => {
   console.log('[API] Force poll triggered')
   await runAllPollers()
   res.json({ ok: true })
+})
+
+app.get('/api/cables', async (_, res) => {
+  try {
+    const data = await fetchCables()
+    res.json(data)
+  } catch (err) {
+    console.error('[CABLES] Fetch failed:', err.message)
+    res.status(503).json({ error: 'Cable data unavailable' })
+  }
 })
 
 app.post('/api/force-brief', async (_, res) => {

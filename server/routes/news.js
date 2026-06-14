@@ -3,26 +3,27 @@ import Parser from 'rss-parser'
 const parser = new Parser({ timeout: 8_000, headers: { 'User-Agent': 'AustraliaMonitor/1.0' } })
 
 const AU_FEEDS = [
-  // Government & official (most reliable)
-  { url: 'https://www.defence.gov.au/news-events/releases/rss.xml',  source: 'DoD Australia',  cat: 'defence'  },
-  { url: 'https://www.rba.gov.au/rss/rss-cb-media-releases.xml',     source: 'RBA',            cat: 'economy'  },
-  { url: 'https://www.aph.gov.au/rss/mediaadvisories.xml',           source: 'Parliament AU',  cat: 'politics' },
+  // Government & think tanks
+  { url: 'https://www.rba.gov.au/rss/rss-cb-media-releases.xml',              source: 'RBA',              cat: 'economy'  },
+  { url: 'https://www.aspistrategist.org.au/feed/',                            source: 'ASPI Strategist',  cat: 'defence'  },
+  { url: 'https://www.lowyinstitute.org/publications/rss',                     source: 'Lowy Institute',   cat: 'defence'  },
   // National broadcasters & mastheads
-  { url: 'https://www.abc.net.au/news/feed/51120/rss.xml',           source: 'ABC News',       cat: 'general'  },
-  { url: 'https://www.abc.net.au/news/feed/52278/rss.xml',           source: 'ABC Australia',  cat: 'general'  },
-  { url: 'https://www.theguardian.com/australia-news/rss',           source: 'Guardian AU',    cat: 'general'  },
-  { url: 'https://www.smh.com.au/rss/feed.xml',                      source: 'SMH',            cat: 'general'  },
-  { url: 'https://www.theage.com.au/rss/feed.xml',                   source: 'The Age',        cat: 'general'  },
-  { url: 'https://www.canberratimes.com.au/rss/feed.xml',            source: 'Canberra Times', cat: 'politics' },
-  { url: 'https://www.afr.com/rss',                                  source: 'AFR',            cat: 'economy'  },
-  { url: 'https://www.skynews.com.au/feeds/rss.xml',                 source: 'Sky News AU',    cat: 'general'  },
-  { url: 'https://thewest.com.au/rss',                               source: 'The West AU',    cat: 'general'  },
+  { url: 'https://www.abc.net.au/news/feed/52278/rss.xml',                    source: 'ABC Australia',    cat: 'general'  },
+  { url: 'https://www.abc.net.au/news/feed/1948/rss.xml',                     source: 'ABC Just In',      cat: 'general'  },
+  { url: 'https://www.theguardian.com/australia-news/rss',                    source: 'Guardian AU',      cat: 'general'  },
+  { url: 'https://www.smh.com.au/rss/feed.xml',                               source: 'SMH',              cat: 'general'  },
+  { url: 'https://www.theage.com.au/rss/feed.xml',                            source: 'The Age',          cat: 'general'  },
+  { url: 'https://thewest.com.au/rss',                                         source: 'The West AU',      cat: 'general'  },
+  { url: 'https://feeds.bbci.co.uk/news/world/australia/rss.xml',             source: 'BBC Australia',    cat: 'general'  },
   // Pacific & international
-  { url: 'https://feeds.rnz.co.nz/pacific',                          source: 'RNZ Pacific',    cat: 'pacific'  },
-  { url: 'https://www.rnz.co.nz/rss/world.xml',                      source: 'RNZ World',      cat: 'general'  },
-  // Tech & cyber
-  { url: 'https://www.itnews.com.au/rss',                            source: 'iTnews AU',      cat: 'cyber'    },
-  { url: 'https://www.zdnet.com/topic/security/rss.xml',             source: 'ZDNet Security', cat: 'cyber'    },
+  { url: 'https://www.rnz.co.nz/rss/pacific.xml',                             source: 'RNZ Pacific',      cat: 'pacific'  },
+  { url: 'https://www.rnz.co.nz/rss/world.xml',                               source: 'RNZ World',        cat: 'general'  },
+  { url: 'https://www.theguardian.com/world/asia-pacific/rss',                source: 'Guardian Pacific',  cat: 'pacific'  },
+  // Analysis & commentary
+  { url: 'https://theconversation.com/au/articles.atom',                       source: 'The Conversation', cat: 'general'  },
+  // Cyber & tech
+  { url: 'https://www.zdnet.com/topic/security/rss.xml',                      source: 'ZDNet Security',   cat: 'cyber'    },
+  { url: 'https://www.cyber.gov.au/about-us/news/all-acsc-alerts-and-advisories.xml', source: 'ACSC Alerts', cat: 'cyber' },
 ]
 
 const DEFENCE_RE   = /defence|aukus|military|army|navy|raaf|adf|submarine|soldier|weapon/i

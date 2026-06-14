@@ -8,6 +8,7 @@ const AU_BBOX = { minLat: -44, maxLat: -10, minLon: 112, maxLon: 154 }
 
 let cache   = null
 let cacheAt = 0
+let pending = null
 
 function inAU(lat, lon) {
   return lat >= AU_BBOX.minLat && lat <= AU_BBOX.maxLat &&
@@ -26,7 +27,13 @@ function cableIsAURelevant(feature) {
 
 export async function fetchCables() {
   if (cache && Date.now() - cacheAt < CACHE_TTL_MS) return cache
+  if (pending) return pending
 
+  pending = _doFetch().finally(() => { pending = null })
+  return pending
+}
+
+async function _doFetch() {
   console.log('[CABLES] Fetching TeleGeography data…')
   const [cablesRes, landingsRes] = await Promise.all([
     fetch(CABLE_GEO_URL),

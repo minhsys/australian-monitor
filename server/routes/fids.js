@@ -19,16 +19,13 @@ function buildUrl(iata, key) {
 }
 
 function summarise(flights, iata, name) {
-  const cutoff  = Date.now() - 2 * 3600_000
-  const upcoming = (flights || []).filter(f => {
-    const dep = f.dep_time_utc ? new Date(f.dep_time_utc).getTime() : 0
-    return dep > cutoff
-  })
+  // dep_time_utc is "HH:MM" time-only — count all flights in the schedule response
+  const all = flights || []
   return {
     iata,
     name,
-    departures: upcoming.length,
-    delayed:    upcoming.filter(f => (f.delayed ?? 0) > 15).length,
+    departures: all.length,
+    delayed:    all.filter(f => (f.delayed ?? 0) > 15).length,
     updatedAt:  new Date().toISOString(),
   }
 }

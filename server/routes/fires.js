@@ -3,7 +3,8 @@ import fetch from 'node-fetch'
 const POLL_MS = 10 * 60 * 1000
 
 function buildUrl(key) {
-  return `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${key}/VIIRS_SNPP_NRT/-44,112,-10,154/1`
+  // bbox order: W,S,E,N (lon_min,lat_min,lon_max,lat_max)
+  return `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${key}/VIIRS_SNPP_NRT/112,-44,154,-10/1`
 }
 
 function parseCsv(csv) {

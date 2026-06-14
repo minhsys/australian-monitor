@@ -23,7 +23,7 @@ const AU_FEEDS = [
   { url: 'https://theconversation.com/au/articles.atom',                       source: 'The Conversation', cat: 'general'  },
   // Cyber & tech
   { url: 'https://www.zdnet.com/topic/security/rss.xml',                      source: 'ZDNet Security',   cat: 'cyber'    },
-  { url: 'https://www.cyber.gov.au/about-us/news/all-acsc-alerts-and-advisories.xml', source: 'ACSC Alerts', cat: 'cyber' },
+  { url: 'https://www.darkreading.com/rss.xml',                               source: 'Dark Reading',      cat: 'cyber'    },
 ]
 
 const DEFENCE_RE   = /defence|aukus|military|army|navy|raaf|adf|submarine|soldier|weapon/i

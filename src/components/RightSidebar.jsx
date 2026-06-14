@@ -79,7 +79,7 @@ const TABS = ['MONEY FLOW', 'ASX SECTORS', 'RBA & MACRO']
 
 export default function RightSidebar({ financial }) {
   const [activeTab, setActiveTab] = useState(0)
-  const data = financial || MOCK_FINANCIAL
+  const data = financial ? { ...MOCK_FINANCIAL, ...financial } : MOCK_FINANCIAL
   const up = data.asx200.change >= 0
 
   return (

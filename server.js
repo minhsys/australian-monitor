@@ -9,6 +9,8 @@ import { startShipsWatcher }                         from './server/routes/ships
 import { startSeismicPoller }                        from './server/routes/seismic.js'
 import { startFiresPoller }                          from './server/routes/fires.js'
 import { fetchRealFinancial, startFinancialPoller }  from './server/routes/financial.js'
+import { fetchRealWeather, startWeatherPoller }       from './server/routes/weather.js'
+import { startFidsPoller }                            from './server/routes/fids.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app       = express()
@@ -107,10 +109,14 @@ async function fetchNews() {
   return getMockNews()
 }
 
-/** Weather — BOM API (Phase 4) */
+/** Weather — Open-Meteo (Phase 4) */
 async function fetchWeather() {
-  // TODO: wire up BOM api.weather.bom.gov.au
-  return getMockWeather()
+  try {
+    return await fetchRealWeather()
+  } catch (err) {
+    console.warn('[WEATHER] Falling back to mock:', err.message)
+    return getMockWeather()
+  }
 }
 
 async function runAllPollers() {
@@ -213,8 +219,12 @@ async function bootstrap() {
   startSeismicPoller(broadcast)
   startFiresPoller(broadcast)
 
-  // Phase 3: real financial poller (replaces the generic interval)
+  // Phase 3: real financial poller
   startFinancialPoller(broadcast, store)
+
+  // Phase 4: real weather + FIDS
+  startWeatherPoller(broadcast, store)
+  startFidsPoller(broadcast, store)
 
   // ✅ Only NOW open the port
   server.listen(PORT, () => {

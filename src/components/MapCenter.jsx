@@ -192,7 +192,7 @@ function redrawFires(group, fires) {
 }
 
 /* ── Component ── */
-export default function MapCenter({ newsItems, flights, ships, seismic, fires }) {
+export default function MapCenter({ newsItems, flights, ships, seismic, fires, fids }) {
   const mapRef    = useRef(null)
   const groupsRef = useRef({})
   const [activeTab, setActiveTab] = useState('news')
@@ -307,7 +307,7 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires })
 
         <div className="map-panel-content">
           {activeTab === 'news'      && <NewsPanel newsItems={newsItems} />}
-          {activeTab === 'transport' && <TransportPanel flights={flights} ships={ships} />}
+          {activeTab === 'transport' && <TransportPanel flights={flights} ships={ships} fids={fids} />}
           {activeTab === 'warning'   && <WarningPanel seismic={seismic} />}
         </div>
       </div>
@@ -316,28 +316,41 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires })
 }
 
 /* ── Transport tab ── */
-function TransportPanel({ flights, ships }) {
+function TransportPanel({ flights, ships, fids }) {
+  const airports = Object.values(fids || {})
+  const hasFids  = airports.length > 0
+
   return (
     <div style={{ padding: '12px 16px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: 11 }}>
       <div style={{ display: 'flex', gap: 24, marginBottom: 10 }}>
         <span style={{ color: 'var(--accent-cyan)' }}>✈ {flights?.length ?? 0} aircraft</span>
         <span style={{ color: 'var(--accent-green)' }}>🚢 {ships?.length ?? 0} vessels</span>
       </div>
-      <div style={{ color: 'var(--accent-cyan)', marginBottom: 8 }}>FIDS — MAJOR AIRPORTS</div>
-      {[
-        { airport: 'SYD — Kingsford Smith', dep: 142, arr: 138, delayed: 7 },
-        { airport: 'MEL — Tullamarine',     dep: 128, arr: 122, delayed: 4 },
-        { airport: 'BNE — Brisbane',        dep: 87,  arr: 84,  delayed: 2 },
-        { airport: 'PER — Perth',           dep: 64,  arr: 61,  delayed: 3 },
-        { airport: 'DRW — Darwin',          dep: 18,  arr: 17,  delayed: 1 },
-      ].map(a => (
-        <div key={a.airport} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-          <span>{a.airport}</span>
-          <span>DEP <span style={{ color: 'var(--accent-blue)' }}>{a.dep}</span></span>
-          <span>ARR <span style={{ color: 'var(--accent-cyan)' }}>{a.arr}</span></span>
-          <span>DLY <span style={{ color: a.delayed > 5 ? 'var(--accent-red)' : 'var(--accent-orange)' }}>{a.delayed}</span></span>
-        </div>
-      ))}
+      <div style={{ color: 'var(--accent-cyan)', marginBottom: 8 }}>
+        FIDS — MAJOR AIRPORTS {!hasFids && <span style={{ color: 'var(--text-dim)', fontSize: 9 }}>(AIRLABS_KEY required)</span>}
+      </div>
+      {hasFids
+        ? airports.map(a => (
+            <div key={a.iata} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+              <span style={{ width: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.iata} — {a.name}</span>
+              <span>DEP <span style={{ color: 'var(--accent-blue)' }}>{a.departures}</span></span>
+              <span>DLY <span style={{ color: a.delayed > 5 ? 'var(--accent-red)' : 'var(--accent-orange)' }}>{a.delayed}</span></span>
+            </div>
+          ))
+        : [
+            { iata: 'SYD', name: 'Kingsford Smith', dep: 142, delayed: 7 },
+            { iata: 'MEL', name: 'Tullamarine',     dep: 128, delayed: 4 },
+            { iata: 'BNE', name: 'Brisbane',        dep: 87,  delayed: 2 },
+            { iata: 'PER', name: 'Perth',           dep: 64,  delayed: 3 },
+            { iata: 'DRW', name: 'Darwin',          dep: 18,  delayed: 1 },
+          ].map(a => (
+            <div key={a.iata} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.04)', opacity: 0.5 }}>
+              <span style={{ width: 140 }}>{a.iata} — {a.name}</span>
+              <span>DEP <span style={{ color: 'var(--accent-blue)' }}>{a.dep}</span></span>
+              <span>DLY <span style={{ color: 'var(--accent-orange)' }}>{a.delayed}</span></span>
+            </div>
+          ))
+      }
     </div>
   )
 }

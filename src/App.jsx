@@ -10,9 +10,11 @@ export default function App() {
   const [newsItems,  setNewsItems]  = useState([])
   const [financial,  setFinancial]  = useState(null)
   const [flights,    setFlights]    = useState([])
-  const [ships,      setShips]      = useState({})   // keyed by mmsi for fast updates
+  const [ships,      setShips]      = useState({})
   const [seismic,    setSeismic]    = useState([])
   const [fires,      setFires]      = useState([])
+  const [weather,    setWeather]    = useState(null)
+  const [fids,       setFids]       = useState({})
   const wsRef = useRef(null)
 
   /* ── WebSocket connection for live data push ── */
@@ -34,6 +36,8 @@ export default function App() {
             const ship = msg.payload
             setShips(prev => ({ ...prev, [ship.mmsi]: ship }))
           }
+          if (msg.type === 'weather') setWeather(msg.payload)
+          if (msg.type === 'fids')    setFids(msg.payload)
         } catch {}
       }
 
@@ -80,13 +84,14 @@ export default function App() {
       <Header feedStats={feedStats} />
 
       <div className="body-grid">
-        <LeftSidebar feedStats={feedStats} onForcePoll={handleForcePoll} />
+        <LeftSidebar feedStats={feedStats} onForcePoll={handleForcePoll} weather={weather} />
         <MapCenter
           newsItems={newsItems}
           flights={flights}
           ships={Object.values(ships)}
           seismic={seismic}
           fires={fires}
+          fids={fids}
         />
         <RightSidebar financial={financial} />
       </div>

@@ -261,8 +261,9 @@ function drawSubmarineCables(group, { cables: cableGeo, landings: landingGeo }) 
 
 /* ── Component ── */
 export default function MapCenter({ newsItems, flights, ships, seismic, fires, fids, aiBrief }) {
-  const mapRef    = useRef(null)
-  const groupsRef = useRef({})
+  const mapRef     = useRef(null)
+  const groupsRef  = useRef({})
+  const wrapperRef = useRef(null)
   const [activeTab, setActiveTab] = useState('news')
   const [layers, setLayers]       = useState(LAYER_DEFAULTS)
   const [cables, setCables]       = useState(null)
@@ -351,6 +352,17 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
     }
   }, [cables, layers.submarineCables])
 
+  /* ── Leaflet resize sync when panel is resized ── */
+  useEffect(() => {
+    const el = wrapperRef.current
+    if (!el) return
+    const observer = new ResizeObserver(() => {
+      if (mapRef.current) mapRef.current.invalidateSize()
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
   /* ── Toggle overlay visibility ── */
   const toggleLayer = (key) => {
     setLayers(prev => {
@@ -367,7 +379,7 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
 
   return (
     <div className="map-center">
-      <div className="map-wrapper">
+      <div className="map-wrapper" ref={wrapperRef}>
         <div id="au-map" />
 
         <div className="map-scanlines" />

@@ -9,9 +9,13 @@ export default function App() {
   const [feedStats,  setFeedStats]  = useState({ total: 16, online: 12, totalFeeds: 400 })
   const [newsItems,  setNewsItems]  = useState([])
   const [financial,  setFinancial]  = useState(null)
+  const [flights,    setFlights]    = useState([])
+  const [ships,      setShips]      = useState({})   // keyed by mmsi for fast updates
+  const [seismic,    setSeismic]    = useState([])
+  const [fires,      setFires]      = useState([])
   const wsRef = useRef(null)
 
-  /* ── WebSocket connection for live news push ── */
+  /* ── WebSocket connection for live data push ── */
   useEffect(() => {
     const connect = () => {
       const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
@@ -23,6 +27,13 @@ export default function App() {
           if (msg.type === 'news')      setNewsItems(prev => [msg.payload, ...prev].slice(0, 50))
           if (msg.type === 'feedStats') setFeedStats(msg.payload)
           if (msg.type === 'financial') setFinancial(msg.payload)
+          if (msg.type === 'flights')   setFlights(msg.payload)
+          if (msg.type === 'seismic')   setSeismic(msg.payload)
+          if (msg.type === 'fires')     setFires(msg.payload)
+          if (msg.type === 'ships') {
+            const ship = msg.payload
+            setShips(prev => ({ ...prev, [ship.mmsi]: ship }))
+          }
         } catch {}
       }
 
@@ -70,11 +81,17 @@ export default function App() {
 
       <div className="body-grid">
         <LeftSidebar feedStats={feedStats} onForcePoll={handleForcePoll} />
-        <MapCenter   newsItems={newsItems} />
+        <MapCenter
+          newsItems={newsItems}
+          flights={flights}
+          ships={Object.values(ships)}
+          seismic={seismic}
+          fires={fires}
+        />
         <RightSidebar financial={financial} />
       </div>
 
-      <BottomTicker />
+      <BottomTicker financial={financial} newsItems={newsItems} />
     </div>
   )
 }

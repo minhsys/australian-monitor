@@ -4,6 +4,11 @@ import http       from 'http'
 import { WebSocketServer } from 'ws'
 import path       from 'path'
 import { fileURLToPath } from 'url'
+import { startFlightsPoller }                        from './server/routes/flights.js'
+import { startShipsWatcher }                         from './server/routes/ships.js'
+import { startSeismicPoller }                        from './server/routes/seismic.js'
+import { startFiresPoller }                          from './server/routes/fires.js'
+import { fetchRealFinancial, startFinancialPoller }  from './server/routes/financial.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app       = express()
@@ -86,10 +91,14 @@ app.post('/api/force-poll', async (_, res) => {
    DATA POLLERS — replace mock with real APIs
 ───────────────────────────────────────────── */
 
-/** Financial data — Yahoo Finance / RBA (Phase 3) */
+/** Financial data — Yahoo Finance + RBA RSS + CoinGecko (Phase 3) */
 async function fetchFinancial() {
-  // TODO: wire up Yahoo Finance, RBA XML, CoinGecko
-  return getMockFinancial()
+  try {
+    return await fetchRealFinancial(store.financial)
+  } catch (err) {
+    console.warn('[FIN] Falling back to mock:', err.message)
+    return getMockFinancial()
+  }
 }
 
 /** News aggregation — RSS feeds (Phase 5) */
@@ -197,6 +206,15 @@ async function bootstrap() {
 
   store.feedStats.online = 12
   startPolling()
+
+  // Phase 2: live map data pollers
+  startFlightsPoller(broadcast)
+  startShipsWatcher(broadcast)
+  startSeismicPoller(broadcast)
+  startFiresPoller(broadcast)
+
+  // Phase 3: real financial poller (replaces the generic interval)
+  startFinancialPoller(broadcast, store)
 
   // ✅ Only NOW open the port
   server.listen(PORT, () => {

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import MapOverlayControls from './panels/MapOverlayControls.jsx'
 import NewsPanel from './panels/NewsPanel.jsx'
-import { Layers, Ship, AlertTriangle } from 'lucide-react'
 
-/* ── AU city news-cluster mock data ── */
+/* ── Static data ── */
 const NEWS_CLUSTERS = [
   { id: 'SYD', name: 'Sydney',       lat: -33.87, lon: 151.21, count: 48, level: 'high' },
   { id: 'MEL', name: 'Melbourne',    lat: -37.81, lon: 144.96, count: 31, level: 'high' },
@@ -19,7 +20,6 @@ const NEWS_CLUSTERS = [
   { id: 'ALX', name: 'Alice Spgs',   lat: -23.70, lon: 133.88, count: 2,  level: 'low' },
 ]
 
-/* ── Static ADF intelligence hub markers ── */
 const INTEL_HUBS = [
   { name: 'Pine Gap (JDF)',      lat: -23.80, lon: 133.74, type: 'SIGINT' },
   { name: 'RAAF Tindal',        lat: -14.52, lon: 132.38, type: 'RAAF' },
@@ -32,6 +32,14 @@ const INTEL_HUBS = [
   { name: 'JORN Alice Springs', lat: -23.66, lon: 133.88, type: 'RADAR' },
 ]
 
+const HUB_COLOURS = {
+  SIGINT: '#ff3d6b',
+  RAAF:   '#00a8ff',
+  RAN:    '#00ffcc',
+  JOINT:  '#f5c842',
+  RADAR:  '#a078ff',
+}
+
 const TABS = [
   { id: 'news',      label: '📰 NEWS & AI BRIEF' },
   { id: 'transport', label: '✈ TRANSPORT & MARITIME' },
@@ -39,151 +47,251 @@ const TABS = [
 ]
 
 const LAYER_DEFAULTS = {
-  intelligenceHubs:  true,
-  liveFlights:       true,
-  trains:            true,
-  shipping:          true,
-  seismic:           false,
-  cameras:           false,
-  airports:          true,
-  seaports:          true,
-  infrastructure:    false,
-  militaryBases:     false,
-  financeLayer:      false,
-  submarineCables:   false,
+  intelligenceHubs: true,
+  liveFlights:      true,
+  trains:           true,
+  shipping:         true,
+  seismic:          false,
+  cameras:          false,
+  airports:         true,
+  seaports:         true,
+  infrastructure:   false,
+  militaryBases:    false,
+  financeLayer:     false,
+  submarineCables:  false,
+  fires:            true,
 }
 
-export default function MapCenter({ newsItems }) {
-  const mapRef       = useRef(null)
-  const leafletRef   = useRef(null)
-  const clustersRef  = useRef([])
-  const hubsRef      = useRef([])
-  const [activeTab, setActiveTab]   = useState('news')
-  const [layers, setLayers]         = useState(LAYER_DEFAULTS)
-  const [mapReady, setMapReady]     = useState(false)
+/* ── Icon builders ── */
+function flightIcon(heading) {
+  return L.divIcon({
+    className: '',
+    html: `<div class="flight-marker" style="transform:rotate(${heading}deg)">✈</div>`,
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
+  })
+}
 
-  /* ── Init Leaflet map ── */
-  useEffect(() => {
-    if (leafletRef.current) return // already initialised
+function shipIcon(speed) {
+  const col = speed > 10 ? '#f5c842' : '#00ffcc'
+  return L.divIcon({
+    className: '',
+    html: `<div class="ship-marker" style="background:${col};border-color:${col}"></div>`,
+    iconSize: [8, 8],
+    iconAnchor: [4, 4],
+  })
+}
 
-    // Dynamic import to avoid SSR issues
-    import('leaflet').then(L => {
-      const map = L.map('au-map', {
-        center: [-25.27, 133.77],
-        zoom: 4,
-        zoomControl: false,
-        attributionControl: true,
+function seismicIcon(magnitude) {
+  const size = Math.max(10, Math.min(36, magnitude * 8))
+  const opacity = Math.min(0.7, 0.2 + magnitude * 0.1)
+  return L.divIcon({
+    className: '',
+    html: `<div class="seismic-marker" style="width:${size}px;height:${size}px;opacity:${opacity}"></div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  })
+}
+
+function fireIcon(brightness) {
+  const size = brightness > 350 ? 14 : 10
+  return L.divIcon({
+    className: '',
+    html: `<div class="fire-marker" style="font-size:${size}px">🔥</div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  })
+}
+
+/* ── Layer drawing helpers ── */
+function drawNewsClusters(group) {
+  NEWS_CLUSTERS.forEach(city => {
+    const size = city.count > 30 ? 32 : city.count > 10 ? 26 : 20
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="news-cluster-marker ${city.level}"
+                  style="width:${size}px;height:${size}px;font-size:${size < 26 ? 9 : 11}px">
+                ${city.count}
+             </div>`,
+      iconSize:   [size, size],
+      iconAnchor: [size / 2, size / 2],
+    })
+    L.marker([city.lat, city.lon], { icon })
+      .bindTooltip(`<b>${city.name}</b><br/>${city.count} signals`, {
+        className: '', direction: 'top', offset: [0, -size / 2],
       })
+      .addTo(group)
+  })
+}
 
-      // Dark tile layer
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OSM</a> © <a href="https://carto.com/">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 19,
-      }).addTo(map)
+function drawIntelHubs(group) {
+  INTEL_HUBS.forEach(hub => {
+    const col = HUB_COLOURS[hub.type] || '#888'
+    const icon = L.divIcon({
+      className: '',
+      html: `<div style="
+        width:10px;height:10px;border-radius:50%;
+        background:${col};border:1.5px solid rgba(255,255,255,0.4);
+        box-shadow:0 0 8px ${col}">
+      </div>`,
+      iconSize:   [10, 10],
+      iconAnchor: [5, 5],
+    })
+    L.marker([hub.lat, hub.lon], { icon })
+      .bindTooltip(`<b>${hub.name}</b> [${hub.type}]`, { direction: 'top', offset: [0, -8] })
+      .addTo(group)
+  })
+}
 
-      // Zoom control — top left
-      L.control.zoom({ position: 'topleft' }).addTo(map)
+function redrawFlights(group, flights) {
+  group.clearLayers()
+  flights.forEach(f => {
+    L.marker([f.lat, f.lon], { icon: flightIcon(f.heading) })
+      .bindTooltip(
+        `<b>${f.callsign || f.icao24}</b><br/>Alt: ${Math.round(f.altitude ?? 0)}m · ${Math.round(f.velocity ?? 0)} m/s`,
+        { direction: 'top', offset: [0, -10] }
+      )
+      .addTo(group)
+  })
+}
 
-      leafletRef.current = { map, L }
-      mapRef.current = map
-      setMapReady(true)
+function redrawShips(group, ships) {
+  group.clearLayers()
+  ships.forEach(s => {
+    L.marker([s.lat, s.lon], { icon: shipIcon(s.speed) })
+      .bindTooltip(
+        `<b>${s.name}</b><br/>MMSI: ${s.mmsi} · ${s.speed?.toFixed(1)} kn`,
+        { direction: 'top', offset: [0, -8] }
+      )
+      .addTo(group)
+  })
+}
 
-      // Draw initial layers
-      drawNewsClusters(map, L)
-      drawIntelHubs(map, L)
+function redrawSeismic(group, events) {
+  group.clearLayers()
+  events.forEach(e => {
+    L.marker([e.lat, e.lon], { icon: seismicIcon(e.magnitude) })
+      .bindTooltip(
+        `<b>M${e.magnitude?.toFixed(1)}</b><br/>${e.place}<br/>Depth: ${e.depth}km`,
+        { direction: 'top', offset: [0, -8] }
+      )
+      .addTo(group)
+  })
+}
+
+function redrawFires(group, fires) {
+  group.clearLayers()
+  fires.forEach(f => {
+    L.marker([f.lat, f.lon], { icon: fireIcon(f.brightness) })
+      .bindTooltip(
+        `🔥 Hotspot<br/>Brightness: ${f.brightness}<br/>Confidence: ${f.confidence}`,
+        { direction: 'top', offset: [0, -8] }
+      )
+      .addTo(group)
+  })
+}
+
+/* ── Component ── */
+export default function MapCenter({ newsItems, flights, ships, seismic, fires }) {
+  const mapRef    = useRef(null)
+  const groupsRef = useRef({})
+  const [activeTab, setActiveTab] = useState('news')
+  const [layers, setLayers]       = useState(LAYER_DEFAULTS)
+
+  /* ── Init map once ── */
+  useEffect(() => {
+    if (mapRef.current) return
+
+    const map = L.map('au-map', {
+      center: [-25.27, 133.77],
+      zoom: 4,
+      zoomControl: false,
+      attributionControl: true,
     })
 
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OSM</a> © <a href="https://carto.com/">CARTO</a>',
+      subdomains: 'abcd',
+      maxZoom: 19,
+    }).addTo(map)
+
+    L.control.zoom({ position: 'topleft' }).addTo(map)
+
+    const groups = {
+      newsClusters:     L.layerGroup().addTo(map),
+      intelligenceHubs: L.layerGroup().addTo(map),
+      liveFlights:      L.layerGroup().addTo(map),
+      shipping:         L.layerGroup().addTo(map),
+      fires:            L.layerGroup().addTo(map),
+      seismic:          L.layerGroup(),    // default off
+    }
+
+    groupsRef.current = groups
+    mapRef.current    = map
+
+    drawNewsClusters(groups.newsClusters)
+    drawIntelHubs(groups.intelligenceHubs)
+
     return () => {
-      if (leafletRef.current) {
-        leafletRef.current.map.remove()
-        leafletRef.current = null
-      }
+      map.remove()
+      mapRef.current    = null
+      groupsRef.current = {}
     }
   }, [])
 
-  /* ── Draw news cluster markers ── */
-  function drawNewsClusters(map, L) {
-    clustersRef.current.forEach(m => m.remove())
-    clustersRef.current = []
+  /* ── Live layer updates ── */
+  useEffect(() => {
+    const g = groupsRef.current.liveFlights
+    if (!g) return
+    redrawFlights(g, layers.liveFlights ? (flights || []) : [])
+  }, [flights, layers.liveFlights])
 
-    NEWS_CLUSTERS.forEach(city => {
-      const size = city.count > 30 ? 32 : city.count > 10 ? 26 : 20
-      const icon = L.divIcon({
-        className: '',
-        html: `<div class="news-cluster-marker ${city.level}"
-                    style="width:${size}px;height:${size}px;font-size:${size < 26 ? 9 : 11}px">
-                  ${city.count}
-               </div>`,
-        iconSize: [size, size],
-        iconAnchor: [size / 2, size / 2],
-      })
+  useEffect(() => {
+    const g = groupsRef.current.shipping
+    if (!g) return
+    redrawShips(g, layers.shipping ? (ships || []) : [])
+  }, [ships, layers.shipping])
 
-      const m = L.marker([city.lat, city.lon], { icon })
-        .bindTooltip(`<b>${city.name}</b><br/>${city.count} signals`, {
-          className: '', direction: 'top', offset: [0, -size / 2]
-        })
-        .addTo(map)
+  useEffect(() => {
+    const g = groupsRef.current.seismic
+    if (!g) return
+    redrawSeismic(g, layers.seismic ? (seismic || []) : [])
+  }, [seismic, layers.seismic])
 
-      clustersRef.current.push(m)
-    })
-  }
+  useEffect(() => {
+    const g = groupsRef.current.fires
+    if (!g) return
+    redrawFires(g, layers.fires ? (fires || []) : [])
+  }, [fires, layers.fires])
 
-  /* ── Draw intelligence hub markers ── */
-  function drawIntelHubs(map, L) {
-    hubsRef.current.forEach(m => m.remove())
-    hubsRef.current = []
-
-    INTEL_HUBS.forEach(hub => {
-      const colours = { SIGINT: '#ff3d6b', RAAF: '#00a8ff', RAN: '#00ffcc', JOINT: '#f5c842', RADAR: '#a078ff' }
-      const col = colours[hub.type] || '#888'
-
-      const icon = L.divIcon({
-        className: '',
-        html: `<div style="
-          width:10px;height:10px;border-radius:50%;
-          background:${col};border:1.5px solid rgba(255,255,255,0.4);
-          box-shadow:0 0 8px ${col}">
-        </div>`,
-        iconSize: [10, 10],
-        iconAnchor: [5, 5],
-      })
-
-      const m = L.marker([hub.lat, hub.lon], { icon })
-        .bindTooltip(`<b>${hub.name}</b> [${hub.type}]`, { direction: 'top', offset: [0, -8] })
-        .addTo(map)
-
-      hubsRef.current.push(m)
-    })
-  }
-
-  /* ── Toggle overlay layers ── */
+  /* ── Toggle overlay visibility ── */
   const toggleLayer = (key) => {
     setLayers(prev => {
-      const next = { ...prev, [key]: !prev[key] }
-      // TODO: show/hide actual Leaflet layer groups
+      const next  = { ...prev, [key]: !prev[key] }
+      const map   = mapRef.current
+      const group = groupsRef.current[key]
+      if (map && group) {
+        if (next[key]) map.addLayer(group)
+        else           map.removeLayer(group)
+      }
       return next
     })
   }
 
   return (
     <div className="map-center">
-      {/* ── Leaflet map area ── */}
       <div className="map-wrapper">
         <div id="au-map" />
 
-        {/* Scanline + corner decorations */}
         <div className="map-scanlines" />
         <div className="map-corner tl" />
         <div className="map-corner tr" />
         <div className="map-corner bl" />
         <div className="map-corner br" />
 
-        {/* Floating overlay controls */}
         <MapOverlayControls layers={layers} onToggle={toggleLayer} />
       </div>
 
-      {/* ── Bottom tab panel ── */}
       <div className="map-panel">
         <div className="map-panel-tabs">
           {TABS.map(t => (
@@ -199,19 +307,23 @@ export default function MapCenter({ newsItems }) {
 
         <div className="map-panel-content">
           {activeTab === 'news'      && <NewsPanel newsItems={newsItems} />}
-          {activeTab === 'transport' && <TransportPanel />}
-          {activeTab === 'warning'   && <WarningPanel />}
+          {activeTab === 'transport' && <TransportPanel flights={flights} ships={ships} />}
+          {activeTab === 'warning'   && <WarningPanel seismic={seismic} />}
         </div>
       </div>
     </div>
   )
 }
 
-/* ── Transport tab placeholder ── */
-function TransportPanel() {
+/* ── Transport tab ── */
+function TransportPanel({ flights, ships }) {
   return (
     <div style={{ padding: '12px 16px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: 11 }}>
-      <div style={{ color: 'var(--accent-cyan)', marginBottom: 8 }}>✈ FIDS — MAJOR AIRPORTS</div>
+      <div style={{ display: 'flex', gap: 24, marginBottom: 10 }}>
+        <span style={{ color: 'var(--accent-cyan)' }}>✈ {flights?.length ?? 0} aircraft</span>
+        <span style={{ color: 'var(--accent-green)' }}>🚢 {ships?.length ?? 0} vessels</span>
+      </div>
+      <div style={{ color: 'var(--accent-cyan)', marginBottom: 8 }}>FIDS — MAJOR AIRPORTS</div>
       {[
         { airport: 'SYD — Kingsford Smith', dep: 142, arr: 138, delayed: 7 },
         { airport: 'MEL — Tullamarine',     dep: 128, arr: 122, delayed: 4 },
@@ -230,19 +342,31 @@ function TransportPanel() {
   )
 }
 
-/* ── Early Warning tab placeholder ── */
-function WarningPanel() {
-  const alerts = [
-    { sev: 'HIGH',   icon: '🔴', title: 'BOM — Severe Thunderstorm Warning', area: 'South East QLD', time: '2m ago' },
-    { sev: 'MEDIUM', icon: '🟠', title: 'ACSC Alert — Ransomware campaign targeting AU finance sector', area: 'National', time: '18m ago' },
-    { sev: 'MEDIUM', icon: '🟠', title: 'DFAT — Travel Advisory updated: PNG — Exercise high degree of caution', area: 'PNG', time: '1h ago' },
-    { sev: 'LOW',    icon: '🟡', title: 'Parliament — Senate committee report: AUKUS submarine program costings', area: 'Canberra', time: '2h ago' },
-    { sev: 'LOW',    icon: '🟡', title: 'RBA — Governor speech: inflation trajectory remarks', area: 'Sydney', time: '3h ago' },
-  ]
+/* ── Early Warning tab ── */
+function WarningPanel({ seismic }) {
+  const recentQuakes = (seismic || []).slice(0, 5)
 
   return (
     <div style={{ overflowY: 'auto', padding: '6px 10px', flex: 1 }}>
-      {alerts.map((a, i) => (
+      {recentQuakes.length > 0 && (
+        <div style={{ marginBottom: 6, color: 'var(--accent-orange)', fontSize: 10, fontFamily: 'var(--font-mono)' }}>
+          RECENT SEISMIC ACTIVITY
+        </div>
+      )}
+      {recentQuakes.map((e, i) => (
+        <div key={e.id ?? i} style={{ display: 'flex', gap: 8, padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.04)', alignItems: 'flex-start' }}>
+          <span style={{ fontSize: 12, flexShrink: 0 }}>📡</span>
+          <div>
+            <div style={{ fontSize: 11, color: 'var(--text-primary)' }}>M{e.magnitude?.toFixed(1)} — {e.place}</div>
+            <div style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>Depth: {e.depth}km</div>
+          </div>
+        </div>
+      ))}
+      {[
+        { icon: '🟠', title: 'ACSC Alert — Ransomware campaign targeting AU finance sector', area: 'National', time: '18m ago' },
+        { icon: '🟠', title: 'DFAT — Travel Advisory updated: PNG — Exercise high degree of caution', area: 'PNG', time: '1h ago' },
+        { icon: '🟡', title: 'Parliament — AUKUS submarine program costings report', area: 'Canberra', time: '2h ago' },
+      ].map((a, i) => (
         <div key={i} style={{ display: 'flex', gap: 8, padding: '5px 6px', borderBottom: '1px solid rgba(255,255,255,0.04)', alignItems: 'flex-start' }}>
           <span style={{ fontSize: 12, flexShrink: 0 }}>{a.icon}</span>
           <div>

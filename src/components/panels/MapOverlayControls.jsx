@@ -13,6 +13,7 @@ const OVERLAY_ITEMS = [
   { key: 'militaryBases',     icon: '🛡', label: 'ADF Bases & Joint Facilities' },
   { key: 'financeLayer',      icon: '💹', label: 'Finance Layer' },
   { key: 'submarineCables',   icon: '🔌', label: 'Submarine Cables' },
+  { key: 'fires',             icon: '🔥', label: 'Bushfire Hotspots (NASA)' },
 ]
 
 export default function MapOverlayControls({ layers, onToggle }) {

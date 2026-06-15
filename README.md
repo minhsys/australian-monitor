@@ -41,12 +41,12 @@ npm start
 | Phase | Status | Feature |
 |-------|--------|---------|
 | 1 | ✅ Done | Layout scaffold — Leaflet map, 3-column UI, mock data |
-| 2 | 🔜 Next | Live map layers — OpenSky flights, AIS ships, Geoscience AU seismic, NASA FIRMS bushfire |
-| 3 | 📋 Planned | Financial — Yahoo Finance, RBA XML, CoinGecko, NSW FuelCheck |
-| 4 | 📋 Planned | Weather & FIDS — BOM API, AirLabs flight board, AEMO grid |
-| 5 | 📋 Planned | AI News — GPT-4o + Gemini dual engine, RSS aggregator |
-| 6 | 📋 Planned | Submarine cables, Finance map layer |
-| 7 | 📋 Planned | Live TV panel + Webcam grid |
+| 2 | ✅ Done | Live map layers — OpenSky flights, AIS ships, Geoscience AU seismic, NASA FIRMS bushfire |
+| 3 | ✅ Done | Financial — Yahoo Finance, RBA XML, CoinGecko, NSW FuelCheck |
+| 4 | ✅ Done | Weather & FIDS — Open-Meteo, AirLabs flight board |
+| 5 | ✅ Done | AI News — GPT-4o + Gemini dual engine, RSS aggregator (16 feeds) |
+| 6 | ✅ Done | AEMO live energy grid — renewable % donut, fuel mix bars, NEM spot prices |
+| 7 | 📋 Planned | Australian vitals — fire danger ratings, reservoir levels, GBR SST, air quality |
 | 8 | 📋 Planned | Pacific intelligence module |
 
 ## Stack

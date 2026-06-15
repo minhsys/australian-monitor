@@ -40,25 +40,6 @@ const HUB_COLOURS = {
   RADAR:  '#a078ff',
 }
 
-const FINANCE_MARKERS = [
-  { name: 'ASX Sydney',           lat: -33.868, lon: 151.207, type: 'exchange',  icon: '💹' },
-  { name: 'Reserve Bank of AU',   lat: -33.870, lon: 151.213, type: 'central',   icon: '🏦' },
-  { name: 'Port Hedland Iron',    lat: -20.315, lon: 118.577, type: 'commodity', icon: '⛏' },
-  { name: 'Curtis Is. LNG',       lat: -23.856, lon: 151.254, type: 'commodity', icon: '🔶' },
-  { name: 'Kalgoorlie Gold',      lat: -30.750, lon: 121.466, type: 'commodity', icon: '🥇' },
-  { name: 'Newcastle Coal',       lat: -32.913, lon: 151.796, type: 'commodity', icon: '⚫' },
-  { name: 'Pilgangoora Lithium',  lat: -21.715, lon: 118.670, type: 'commodity', icon: '⚡' },
-  { name: 'BHP (Melbourne)',      lat: -37.820, lon: 144.964, type: 'corporate', icon: '🏢' },
-  { name: 'Rio Tinto (Perth)',    lat: -31.956, lon: 115.860, type: 'corporate', icon: '🏢' },
-]
-
-const FINANCE_COLOURS = {
-  exchange:  '#f5c842',
-  central:   '#ff3d6b',
-  commodity: '#ff8800',
-  corporate: '#00a8ff',
-}
-
 const TABS = [
   { id: 'news',      label: '📰 NEWS & AI BRIEF' },
   { id: 'transport', label: '✈ TRANSPORT & MARITIME' },
@@ -210,70 +191,19 @@ function redrawFires(group, fires) {
   })
 }
 
-function drawFinanceLayer(group) {
-  FINANCE_MARKERS.forEach(m => {
-    const col = FINANCE_COLOURS[m.type] || '#888'
-    const icon = L.divIcon({
-      className: '',
-      html: `<div style="
-        background:${col}22;border:1.5px solid ${col};border-radius:3px;
-        padding:2px 5px;font-size:9px;white-space:nowrap;
-        color:${col};font-family:monospace;
-        box-shadow:0 0 6px ${col}66;line-height:1.4">
-        ${m.icon} ${m.name}
-      </div>`,
-      iconAnchor: [0, 0],
-    })
-    L.marker([m.lat, m.lon], { icon })
-      .bindTooltip(`<b>${m.name}</b><br/>[${m.type.toUpperCase()}]`, { direction: 'top', offset: [0, -8] })
-      .addTo(group)
-  })
-}
-
-function drawSubmarineCables(group, { cables: cableGeo, landings: landingGeo }) {
-  L.geoJSON(cableGeo, {
-    style: feature => ({
-      color: feature.properties?.color || '#00a8ff',
-      weight: 1.5,
-      opacity: 0.65,
-    }),
-    onEachFeature: (feature, layer) => {
-      if (feature.properties?.name) {
-        layer.bindTooltip(`📡 ${feature.properties.name}`, { sticky: true })
-      }
-    },
-  }).addTo(group)
-
-  landingGeo.features.forEach(f => {
-    const [lon, lat] = f.geometry.coordinates
-    L.circleMarker([lat, lon], {
-      radius: 5,
-      fillColor: '#00ffcc',
-      color: '#00ffcc',
-      weight: 1.5,
-      opacity: 1,
-      fillOpacity: 0.85,
-    })
-      .bindTooltip(`🔌 ${f.properties?.name || 'Landing Point'}`, { direction: 'top', offset: [0, -8] })
-      .addTo(group)
-  })
-}
-
 /* ── Component ── */
 export default function MapCenter({ newsItems, flights, ships, seismic, fires, fids, aiBrief }) {
-  const mapRef     = useRef(null)
-  const groupsRef  = useRef({})
-  const wrapperRef = useRef(null)
+  const mapRef    = useRef(null)
+  const groupsRef = useRef({})
   const [activeTab, setActiveTab] = useState('news')
   const [layers, setLayers]       = useState(LAYER_DEFAULTS)
-  const [cables, setCables]       = useState(null)
 
   /* ── Init map once ── */
   useEffect(() => {
     if (mapRef.current) return
 
     const map = L.map('au-map', {
-      center: [-25.27, 133.77],
+      center: [-27, 134],
       zoom: 4,
       zoomControl: false,
       attributionControl: true,
@@ -294,8 +224,6 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
       shipping:         L.layerGroup().addTo(map),
       fires:            L.layerGroup().addTo(map),
       seismic:          L.layerGroup(),    // default off
-      financeLayer:     L.layerGroup(),    // default off
-      submarineCables:  L.layerGroup(),    // default off
     }
 
     groupsRef.current = groups
@@ -303,13 +231,6 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
 
     drawNewsClusters(groups.newsClusters)
     drawIntelHubs(groups.intelligenceHubs)
-    drawFinanceLayer(groups.financeLayer)
-
-    // Pre-fetch cable data so it's ready when the layer is toggled on
-    fetch('/api/cables')
-      .then(r => r.json())
-      .then(setCables)
-      .catch(err => console.warn('[CABLES] fetch failed:', err))
 
     return () => {
       map.remove()
@@ -343,26 +264,6 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
     redrawFires(g, layers.fires ? (fires || []) : [])
   }, [fires, layers.fires])
 
-  useEffect(() => {
-    const g = groupsRef.current.submarineCables
-    if (!g) return
-    g.clearLayers()
-    if (layers.submarineCables && cables) {
-      drawSubmarineCables(g, cables)
-    }
-  }, [cables, layers.submarineCables])
-
-  /* ── Leaflet resize sync when panel is resized ── */
-  useEffect(() => {
-    const el = wrapperRef.current
-    if (!el) return
-    const observer = new ResizeObserver(() => {
-      if (mapRef.current) mapRef.current.invalidateSize()
-    })
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [])
-
   /* ── Toggle overlay visibility ── */
   const toggleLayer = (key) => {
     setLayers(prev => {
@@ -379,7 +280,7 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
 
   return (
     <div className="map-center">
-      <div className="map-wrapper" ref={wrapperRef}>
+      <div className="map-wrapper">
         <div id="au-map" />
 
         <div className="map-scanlines" />

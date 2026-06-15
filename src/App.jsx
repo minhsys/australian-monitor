@@ -1,13 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
-import Header            from './components/Header.jsx'
-import LeftSidebar       from './components/LeftSidebar.jsx'
-import MapCenter         from './components/MapCenter.jsx'
-import RightSidebar      from './components/RightSidebar.jsx'
-import BottomTicker      from './components/BottomTicker.jsx'
-import DashboardGrid     from './components/DashboardGrid.jsx'
-import NewsPanel         from './components/panels/NewsPanel.jsx'
-import StandaloneFids    from './components/panels/StandaloneFids.jsx'
-import StandaloneSeismic from './components/panels/StandaloneSeismic.jsx'
+import Header       from './components/Header.jsx'
+import LeftSidebar  from './components/LeftSidebar.jsx'
+import MapCenter    from './components/MapCenter.jsx'
+import RightSidebar from './components/RightSidebar.jsx'
+import BottomTicker from './components/BottomTicker.jsx'
 
 export default function App() {
   const [feedStats,  setFeedStats]  = useState({ total: 16, online: 12, totalFeeds: 400 })
@@ -48,12 +44,14 @@ export default function App() {
         } catch {}
       }
 
-      ws.onclose = () => setTimeout(connect, 3000)
-      ws.onerror = () => ws.close() // triggers onclose → retry
+      ws.onclose = () => setTimeout(connect, 3000) // reconnect
       wsRef.current = ws
     }
 
-    connect()
+    // Only connect if running against the real server (not pure Vite dev with no WS)
+    if (import.meta.env.PROD || window.location.port === '3001') {
+      connect()
+    }
 
     return () => wsRef.current?.close()
   }, [])
@@ -88,14 +86,19 @@ export default function App() {
     <div className="app-shell">
       <Header feedStats={feedStats} />
 
-      <DashboardGrid panels={{
-        left:    <LeftSidebar feedStats={feedStats} onForcePoll={handleForcePoll} weather={weather} />,
-        map:     <MapCenter newsItems={newsItems} flights={flights} ships={Object.values(ships)} seismic={seismic} fires={fires} fids={fids} aiBrief={aiBrief} />,
-        right:   <RightSidebar financial={financial} />,
-        news:    <NewsPanel newsItems={newsItems} aiBrief={aiBrief} />,
-        fids:    <StandaloneFids fids={fids} />,
-        seismic: <StandaloneSeismic seismic={seismic} />,
-      }} />
+      <div className="body-grid">
+        <LeftSidebar feedStats={feedStats} onForcePoll={handleForcePoll} weather={weather} />
+        <MapCenter
+          newsItems={newsItems}
+          flights={flights}
+          ships={Object.values(ships)}
+          seismic={seismic}
+          fires={fires}
+          fids={fids}
+          aiBrief={aiBrief}
+        />
+        <RightSidebar financial={financial} />
+      </div>
 
       <BottomTicker financial={financial} newsItems={newsItems} />
     </div>

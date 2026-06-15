@@ -106,8 +106,8 @@ export default function NewsPanel({ newsItems, aiBrief }) {
 
       {/* ── News feed list ── */}
       <div className="news-feed-list">
-        {filtered.map(item => (
-          <div className="news-item" key={item.id}>
+        {filtered.map((item, idx) => (
+          <div className="news-item" key={`${item.id}-${idx}`}>
             <span className={`news-item-category ${CAT_CLASSES[item.cat] || ''}`}>
               {item.cat.toUpperCase().slice(0, 3)}
             </span>

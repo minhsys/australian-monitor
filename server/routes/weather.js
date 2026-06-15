@@ -27,19 +27,8 @@ function decodeWmo(code) {
   return { desc: 'Unknown', icon: '🌡' }
 }
 
-async function fetchCity(city) {
-  const url =
-    `https://api.open-meteo.com/v1/forecast` +
-    `?latitude=${city.lat}&longitude=${city.lon}` +
-    `&current=temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m` +
-    `&timezone=auto`
-
-  const res = await fetch(url, { signal: AbortSignal.timeout(8_000) })
-  if (!res.ok) throw new Error(`Open-Meteo HTTP ${res.status}`)
-  const data = await res.json()
-  const cur  = data.current
+function parseCity(city, cur) {
   const { desc, icon } = decodeWmo(cur.weather_code ?? 0)
-
   return {
     name:     city.name,
     region:   city.region,
@@ -52,12 +41,22 @@ async function fetchCity(city) {
 }
 
 export async function fetchRealWeather() {
-  const results = await Promise.allSettled(CITIES.map(fetchCity))
-  return results.map((r, i) => {
-    if (r.status === 'fulfilled') return r.value
-    console.warn(`[WEATHER] ${CITIES[i].name} failed:`, r.reason.message)
-    return null
-  }).filter(Boolean)
+  // Single batch request — avoids per-city 429 rate limiting
+  const lats = CITIES.map(c => c.lat).join(',')
+  const lons  = CITIES.map(c => c.lon).join(',')
+  const url   =
+    `https://api.open-meteo.com/v1/forecast` +
+    `?latitude=${lats}&longitude=${lons}` +
+    `&current=temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m` +
+    `&timezone=auto`
+
+  const res  = await fetch(url, { signal: AbortSignal.timeout(10_000) })
+  if (!res.ok) throw new Error(`Open-Meteo HTTP ${res.status}`)
+  const data = await res.json()
+
+  // API returns an array when multiple locations are requested
+  const items = Array.isArray(data) ? data : [data]
+  return items.map((d, i) => parseCity(CITIES[i], d.current ?? {})).filter(Boolean)
 }
 
 export function startWeatherPoller(broadcast, store) {

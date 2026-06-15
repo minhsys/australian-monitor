@@ -46,7 +46,7 @@ npm start
 | 4 | ✅ Done | Weather & FIDS — Open-Meteo, AirLabs flight board |
 | 5 | ✅ Done | AI News — GPT-4o + Gemini dual engine, RSS aggregator (16 feeds) |
 | 6 | ✅ Done | AEMO live energy grid — renewable % donut, fuel mix bars, NEM spot prices |
-| 7 | 📋 Planned | Australian vitals — fire danger ratings, reservoir levels, GBR SST, air quality |
+| 7 | ✅ Done | Australian vitals — fire danger ratings, reservoir levels, GBR SST, air quality (OpenAQ) |
 | 8 | 📋 Planned | Pacific intelligence module |
 
 ## Stack

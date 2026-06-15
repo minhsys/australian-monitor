@@ -1,7 +1,7 @@
 import fetch from 'node-fetch'
 
 const AU_BBOX = { lamin: -44, lamax: -10, lomin: 112, lomax: 154 }
-const POLL_MS = 60_000  // OpenSky anonymous: ~400 req/day limit
+const POLL_MS = 300_000  // OpenSky: 400 req/day limit → 5 min = 288/day
 const OPENSKY_URL =
   `https://opensky-network.org/api/states/all` +
   `?lamin=${AU_BBOX.lamin}&lamax=${AU_BBOX.lamax}` +

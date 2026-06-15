@@ -6,9 +6,9 @@ const AU_FEEDS = [
   // Government & think tanks
   { url: 'https://www.rba.gov.au/rss/rss-cb-media-releases.xml',              source: 'RBA',              cat: 'economy'  },
   { url: 'https://www.aspistrategist.org.au/feed/',                            source: 'ASPI Strategist',  cat: 'defence'  },
-  { url: 'https://www.lowyinstitute.org/publications/rss',                     source: 'Lowy Institute',   cat: 'defence'  },
+  { url: 'https://www.internationalaffairs.org.au/feed/',                      source: 'AIIA',             cat: 'defence'  },
   // National broadcasters & mastheads
-  { url: 'https://www.abc.net.au/news/feed/52278/rss.xml',                    source: 'ABC Australia',    cat: 'general'  },
+  { url: 'https://www.abc.net.au/news/feed/51120/rss.xml',                    source: 'ABC Top Stories',  cat: 'general'  },
   { url: 'https://www.abc.net.au/news/feed/1948/rss.xml',                     source: 'ABC Just In',      cat: 'general'  },
   { url: 'https://www.theguardian.com/australia-news/rss',                    source: 'Guardian AU',      cat: 'general'  },
   { url: 'https://www.smh.com.au/rss/feed.xml',                               source: 'SMH',              cat: 'general'  },
@@ -22,7 +22,7 @@ const AU_FEEDS = [
   // Analysis & commentary
   { url: 'https://theconversation.com/au/articles.atom',                       source: 'The Conversation', cat: 'general'  },
   // Cyber & tech
-  { url: 'https://www.zdnet.com/topic/security/rss.xml',                      source: 'ZDNet Security',   cat: 'cyber'    },
+  { url: 'https://www.bleepingcomputer.com/feed/',                             source: 'BleepingComputer', cat: 'cyber'    },
   { url: 'https://www.darkreading.com/rss.xml',                               source: 'Dark Reading',      cat: 'cyber'    },
 ]
 

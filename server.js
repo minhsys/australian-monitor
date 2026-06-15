@@ -16,6 +16,7 @@ import { startAiBriefPoller }                         from './server/routes/aiBr
 import { fetchCables }                                from './server/routes/cables.js'
 import { fetchRealEnergy, startEnergyPoller }         from './server/routes/energy.js'
 import { fetchAbsData, startAbsPoller }               from './server/routes/abs.js'
+import { startVitalsPoller }                          from './server/routes/vitals.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app       = express()
@@ -44,6 +45,7 @@ const store = {
   weather:   null,
   energy:    null,
   absData:   null,
+  vitals:    null,
   feedStats: { total: 18, online: 0, totalFeeds: 400 },
 }
 
@@ -66,6 +68,7 @@ wss.on('connection', (ws) => {
   if (store.aiBrief)      ws.send(JSON.stringify({ type: 'ai_brief',   payload: store.aiBrief }))
   if (store.energy)       ws.send(JSON.stringify({ type: 'energy',     payload: store.energy }))
   if (store.absData)      ws.send(JSON.stringify({ type: 'abs_data',   payload: store.absData }))
+  if (store.vitals)       ws.send(JSON.stringify({ type: 'vitals',     payload: store.vitals }))
 })
 
 /* ─────────────────────────────────────────────
@@ -105,6 +108,10 @@ app.get('/api/energy', noCache, (_, res) => {
 
 app.get('/api/abs', noCache, (_, res) => {
   res.json(store.absData ?? { source: 'unavailable' })
+})
+
+app.get('/api/vitals', noCache, (_, res) => {
+  res.json(store.vitals ?? { source: 'unavailable' })
 })
 
 app.get('/api/cables', async (_, res) => {
@@ -277,6 +284,9 @@ async function bootstrap() {
   // Phase 6: AEMO energy grid + ABS national indicators
   startEnergyPoller(broadcast, store)
   startAbsPoller(broadcast, store)
+
+  // Phase 7: Australian vitals — fire danger, air quality, reservoirs, GBR SST
+  startVitalsPoller(broadcast, store)
 
   // ✅ Only NOW open the port
   server.listen(PORT, () => {

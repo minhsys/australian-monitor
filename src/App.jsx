@@ -18,6 +18,7 @@ export default function App() {
   const [aiBrief,    setAiBrief]    = useState(null)
   const [energy,     setEnergy]     = useState(null)
   const [absData,    setAbsData]    = useState(null)
+  const [vitals,     setVitals]     = useState(null)
   const wsRef = useRef(null)
 
   /* ── WebSocket connection for live data push ── */
@@ -44,6 +45,7 @@ export default function App() {
           if (msg.type === 'ai_brief') setAiBrief(msg.payload)
           if (msg.type === 'energy')   setEnergy(msg.payload)
           if (msg.type === 'abs_data') setAbsData(msg.payload)
+          if (msg.type === 'vitals')   setVitals(msg.payload)
           if (msg.type === 'news_batch') setNewsItems(msg.payload)
         } catch {}
       }
@@ -101,7 +103,7 @@ export default function App() {
           fids={fids}
           aiBrief={aiBrief}
         />
-        <RightSidebar financial={financial} energy={energy} absData={absData} />
+        <RightSidebar financial={financial} energy={energy} absData={absData} vitals={vitals} />
       </div>
 
       <BottomTicker financial={financial} newsItems={newsItems} />

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { TrendingUp, TrendingDown, BarChart2, Zap } from 'lucide-react'
-import EnergyPanel from './panels/EnergyPanel.jsx'
+import EnergyPanel  from './panels/EnergyPanel.jsx'
+import VitalsPanel  from './panels/VitalsPanel.jsx'
 
 /* ── Mock financial data (replace with Yahoo Finance / RBA API in Phase 3) ── */
 const MOCK_FINANCIAL = {
@@ -76,9 +77,9 @@ function mockSparkData(base, n = 24) {
 
 const ASX_SPARK = mockSparkData(8234)
 
-const TABS = ['MONEY FLOW', 'ASX SECTORS', 'RBA & MACRO', 'ENERGY GRID']
+const TABS = ['MONEY FLOW', 'ASX SECTORS', 'RBA & MACRO', 'ENERGY GRID', 'VITALS']
 
-export default function RightSidebar({ financial, energy, absData }) {
+export default function RightSidebar({ financial, energy, absData, vitals }) {
   const [activeTab, setActiveTab] = useState(0)
   const data = financial ? { ...MOCK_FINANCIAL, ...financial } : MOCK_FINANCIAL
   const up = data.asx200.change >= 0
@@ -89,6 +90,8 @@ export default function RightSidebar({ financial, energy, absData }) {
       <div className="fin-header">
         {activeTab === 3
           ? <><Zap size={14} color="var(--accent-green)" /> AEMO LIVE ENERGY GRID</>
+          : activeTab === 4
+          ? <><Zap size={14} color="var(--accent-red)" /> AUSTRALIAN VITALS</>
           : <><BarChart2 size={14} color="var(--accent-gold)" /> ASX FINANCIAL MARKETS</>
         }
       </div>
@@ -328,6 +331,9 @@ export default function RightSidebar({ financial, energy, absData }) {
 
         {/* ── TAB 3: ENERGY GRID ── */}
         {activeTab === 3 && <EnergyPanel energy={energy} />}
+
+        {/* ── TAB 4: VITALS ── */}
+        {activeTab === 4 && <VitalsPanel vitals={vitals} />}
       </div>
     </aside>
   )

@@ -14,6 +14,8 @@ import { startFidsPoller }                            from './server/routes/fids
 import { fetchRealNews }                              from './server/routes/news.js'
 import { startAiBriefPoller }                         from './server/routes/aiBrief.js'
 import { fetchCables }                                from './server/routes/cables.js'
+import { fetchRealEnergy, startEnergyPoller }         from './server/routes/energy.js'
+import { fetchAbsData, startAbsPoller }               from './server/routes/abs.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app       = express()
@@ -40,7 +42,9 @@ const store = {
   news:      [],
   financial: null,
   weather:   null,
-  feedStats: { total: 16, online: 0, totalFeeds: 400 },
+  energy:    null,
+  absData:   null,
+  feedStats: { total: 18, online: 0, totalFeeds: 400 },
 }
 
 /* ─────────────────────────────────────────────
@@ -60,6 +64,8 @@ wss.on('connection', (ws) => {
   if (store.feedStats)    ws.send(JSON.stringify({ type: 'feedStats',  payload: store.feedStats }))
   if (store.weather)      ws.send(JSON.stringify({ type: 'weather',    payload: store.weather }))
   if (store.aiBrief)      ws.send(JSON.stringify({ type: 'ai_brief',   payload: store.aiBrief }))
+  if (store.energy)       ws.send(JSON.stringify({ type: 'energy',     payload: store.energy }))
+  if (store.absData)      ws.send(JSON.stringify({ type: 'abs_data',   payload: store.absData }))
 })
 
 /* ─────────────────────────────────────────────
@@ -91,6 +97,14 @@ app.post('/api/force-poll', async (_, res) => {
   console.log('[API] Force poll triggered')
   await runAllPollers()
   res.json({ ok: true })
+})
+
+app.get('/api/energy', noCache, (_, res) => {
+  res.json(store.energy ?? { source: 'unavailable' })
+})
+
+app.get('/api/abs', noCache, (_, res) => {
+  res.json(store.absData ?? { source: 'unavailable' })
 })
 
 app.get('/api/cables', async (_, res) => {
@@ -259,6 +273,10 @@ async function bootstrap() {
 
   // Phase 5: AI brief (fires 30s after boot once news is loaded)
   startAiBriefPoller(broadcast, store)
+
+  // Phase 6: AEMO energy grid + ABS national indicators
+  startEnergyPoller(broadcast, store)
+  startAbsPoller(broadcast, store)
 
   // ✅ Only NOW open the port
   server.listen(PORT, () => {

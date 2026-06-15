@@ -16,6 +16,8 @@ export default function App() {
   const [weather,    setWeather]    = useState(null)
   const [fids,       setFids]       = useState({})
   const [aiBrief,    setAiBrief]    = useState(null)
+  const [energy,     setEnergy]     = useState(null)
+  const [absData,    setAbsData]    = useState(null)
   const wsRef = useRef(null)
 
   /* ── WebSocket connection for live data push ── */
@@ -40,6 +42,8 @@ export default function App() {
           if (msg.type === 'weather')  setWeather(msg.payload)
           if (msg.type === 'fids')     setFids(msg.payload)
           if (msg.type === 'ai_brief') setAiBrief(msg.payload)
+          if (msg.type === 'energy')   setEnergy(msg.payload)
+          if (msg.type === 'abs_data') setAbsData(msg.payload)
           if (msg.type === 'news_batch') setNewsItems(msg.payload)
         } catch {}
       }
@@ -97,7 +101,7 @@ export default function App() {
           fids={fids}
           aiBrief={aiBrief}
         />
-        <RightSidebar financial={financial} />
+        <RightSidebar financial={financial} energy={energy} absData={absData} />
       </div>
 
       <BottomTicker financial={financial} newsItems={newsItems} />

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { TrendingUp, TrendingDown, BarChart2 } from 'lucide-react'
+import { TrendingUp, TrendingDown, BarChart2, Zap } from 'lucide-react'
+import EnergyPanel from './panels/EnergyPanel.jsx'
 
 /* ── Mock financial data (replace with Yahoo Finance / RBA API in Phase 3) ── */
 const MOCK_FINANCIAL = {
@@ -75,9 +76,9 @@ function mockSparkData(base, n = 24) {
 
 const ASX_SPARK = mockSparkData(8234)
 
-const TABS = ['MONEY FLOW', 'ASX SECTORS', 'RBA & MACRO']
+const TABS = ['MONEY FLOW', 'ASX SECTORS', 'RBA & MACRO', 'ENERGY GRID']
 
-export default function RightSidebar({ financial }) {
+export default function RightSidebar({ financial, energy, absData }) {
   const [activeTab, setActiveTab] = useState(0)
   const data = financial ? { ...MOCK_FINANCIAL, ...financial } : MOCK_FINANCIAL
   const up = data.asx200.change >= 0
@@ -86,8 +87,10 @@ export default function RightSidebar({ financial }) {
     <aside className="right-sidebar">
       {/* ── Header ── */}
       <div className="fin-header">
-        <BarChart2 size={14} color="var(--accent-gold)" />
-        ASX FINANCIAL MARKETS
+        {activeTab === 3
+          ? <><Zap size={14} color="var(--accent-green)" /> AEMO LIVE ENERGY GRID</>
+          : <><BarChart2 size={14} color="var(--accent-gold)" /> ASX FINANCIAL MARKETS</>
+        }
       </div>
 
       {/* ── Tabs ── */}
@@ -251,20 +254,56 @@ export default function RightSidebar({ financial }) {
         {activeTab === 2 && (
           <>
             <div className="fin-section">
-              <div className="fin-section-title">RBA DASHBOARD</div>
+              <div className="fin-section-title">
+                RBA DASHBOARD
+                {absData && <span className="abs-live-badge">ABS LIVE</span>}
+              </div>
               {[
-                { label: 'Cash Rate Target',      val: '4.35%',  note: 'Unchanged since Nov 2023' },
-                { label: 'CPI (Headline)',         val: '3.2%',   note: 'Mar 2026 · Target: 2–3%' },
-                { label: 'CPI (Trimmed Mean)',     val: '3.0%',   note: 'Within target band' },
-                { label: 'Unemployment Rate',      val: '3.8%',   note: 'May 2026 ABS' },
-                { label: 'GDP Growth (Annual)',    val: '1.9%',   note: 'Q1 2026 ABS' },
-                { label: 'Trade Balance',          val: '+$6.1B', note: 'Apr 2026 surplus' },
-                { label: 'FDI (Net, Annual)',      val: '+$48B',  note: '2025 FY ABS' },
-                { label: 'Household Savings Rate', val: '3.1%',   note: 'Q1 2026' },
+                {
+                  label: 'Cash Rate Target',
+                  val:   data.cashRate?.value ?? '4.35%',
+                  note:  'RBA target rate',
+                },
+                {
+                  label: 'CPI (All Groups)',
+                  val:   absData?.cpi?.value != null ? `${absData.cpi.value}%` : '—',
+                  note:  absData?.cpi?.period ?? 'ABS',
+                  live:  !!absData?.cpi?.value,
+                },
+                {
+                  label: 'Unemployment Rate',
+                  val:   absData?.unemployment?.value != null ? `${absData.unemployment.value}%` : '—',
+                  note:  absData?.unemployment?.period ?? 'ABS LF',
+                  live:  !!absData?.unemployment?.value,
+                },
+                {
+                  label: 'GDP Growth (YoY)',
+                  val:   absData?.gdpGrowth?.value != null ? `${absData.gdpGrowth.value}%` : '—',
+                  note:  absData?.gdpGrowth?.period ?? 'ABS NA',
+                  live:  !!absData?.gdpGrowth?.value,
+                },
+                {
+                  label: 'Population',
+                  val:   absData?.population?.value != null ? `${absData.population.value}M` : '—',
+                  note:  absData?.population?.period ?? 'ABS ERP',
+                  live:  !!absData?.population?.value,
+                },
+                {
+                  label: 'Trade Balance',
+                  val:   absData?.tradeBalance?.value != null
+                    ? `${absData.tradeBalance.value >= 0 ? '+' : ''}$${absData.tradeBalance.value}B`
+                    : '—',
+                  note:  absData?.tradeBalance?.period ?? 'ABS BOP',
+                  live:  !!absData?.tradeBalance?.value,
+                },
               ].map(r => (
                 <div className="netflow-row" key={r.label}>
-                  <span className="netflow-name" style={{ width: 170, flex: 'none' }}>{r.label}</span>
-                  <span style={{ color: 'var(--accent-gold)', fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700 }}>{r.val}</span>
+                  <span className="netflow-name" style={{ width: 155, flex: 'none' }}>{r.label}</span>
+                  <span style={{
+                    color: r.live ? 'var(--accent-cyan)' : 'var(--accent-gold)',
+                    fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700,
+                  }}>{r.val}</span>
+                  {r.live && <span style={{ color: 'var(--text-muted)', fontSize: 9, marginLeft: 4 }}>{r.note}</span>}
                 </div>
               ))}
             </div>
@@ -286,6 +325,9 @@ export default function RightSidebar({ financial }) {
             </div>
           </>
         )}
+
+        {/* ── TAB 3: ENERGY GRID ── */}
+        {activeTab === 3 && <EnergyPanel energy={energy} />}
       </div>
     </aside>
   )

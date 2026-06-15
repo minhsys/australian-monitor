@@ -1323,6 +1323,192 @@ body {
   100% { box-shadow: 0 0 0 0 rgba(255, 60, 60, 0); }
 }
 
+/* ============================================================
+   ENERGY GRID PANEL
+   ============================================================ */
+
+.energy-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 2px;
+}
+
+.energy-hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0 4px;
+}
+
+.energy-ring { flex-shrink: 0; }
+
+.energy-hero-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.energy-stat-val {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent-green);
+  letter-spacing: 1px;
+}
+
+.energy-stat-label {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--text-muted);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.energy-source-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--accent-green);
+  letter-spacing: 1px;
+  opacity: 0.75;
+  margin-top: 2px;
+}
+
+.energy-section {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.energy-section-title {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--accent-green);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.fuel-bars { display: flex; flex-direction: column; gap: 5px; }
+
+.fuel-bar-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 70px 36px;
+  align-items: center;
+  gap: 4px;
+}
+
+.fuel-bar-label-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.fuel-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.fuel-name {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.fuel-green-tag { font-size: 8px; opacity: 0.7; }
+
+.fuel-bar-track {
+  height: 5px;
+  background: #0e1926;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.fuel-bar-fill { height: 100%; border-radius: 2px; }
+
+.fuel-mw {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--text-muted);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.fuel-pct {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-primary);
+  text-align: right;
+}
+
+.region-price-header {
+  display: grid;
+  grid-template-columns: 40px 1fr 90px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.region-price-row {
+  display: grid;
+  grid-template-columns: 40px 1fr 90px;
+  align-items: center;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+
+.region-id {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent-blue);
+  letter-spacing: 1px;
+}
+
+.region-demand {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+.region-price {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.abs-live-badge {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 7px;
+  font-family: var(--font-mono);
+  letter-spacing: 1px;
+  color: var(--accent-cyan);
+  border: 1px solid var(--accent-cyan);
+  border-radius: 2px;
+  padding: 1px 4px;
+  opacity: 0.8;
+  vertical-align: middle;
+}
+
+.fin-tab:nth-child(4).active {
+  color: var(--accent-green);
+  border-bottom-color: var(--accent-green);
+}
+
 .fire-marker {
   line-height: 1;
   display: inline-block;

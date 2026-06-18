@@ -243,7 +243,7 @@ export default function RightSidebar({ financial, energy, absData, vitals }) {
               ].map(c => (
                 <div className="netflow-row" key={c.name}>
                   <span className="netflow-name">{c.name}</span>
-                  <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: 10 }}>{c.val}</span>
+                  <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>{c.val}</span>
                   <span className={`netflow-val ${c.up ? 'pos' : 'neg'}`}>
                     {c.up ? '+' : ''}{typeof c.chg === 'number' ? c.chg.toFixed(c.chg > 10 ? 0 : 2) : c.chg}
                   </span>
@@ -319,7 +319,7 @@ export default function RightSidebar({ financial, energy, absData, vitals }) {
               ].map(c => (
                 <div className="netflow-row" key={c.name}>
                   <span className="netflow-name">{c.name}</span>
-                  <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: 10 }}>{c.val}</span>
+                  <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>{c.val}</span>
                   <span className={`netflow-val ${c.up ? 'pos' : 'neg'}`}>
                     {c.up ? '+' : ''}{c.chg.toFixed(2)}%
                   </span>

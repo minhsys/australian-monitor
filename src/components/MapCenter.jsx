@@ -321,13 +321,13 @@ function TransportPanel({ flights, ships, fids }) {
   const hasFids  = airports.length > 0
 
   return (
-    <div style={{ padding: '12px 16px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: 11 }}>
+    <div style={{ padding: '12px 16px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: 13 }}>
       <div style={{ display: 'flex', gap: 24, marginBottom: 10 }}>
         <span style={{ color: 'var(--accent-cyan)' }}>✈ {flights?.length ?? 0} aircraft</span>
         <span style={{ color: 'var(--accent-green)' }}>🚢 {ships?.length ?? 0} vessels</span>
       </div>
       <div style={{ color: 'var(--accent-cyan)', marginBottom: 8 }}>
-        FIDS — MAJOR AIRPORTS {!hasFids && <span style={{ color: 'var(--text-dim)', fontSize: 9 }}>(AIRLABS_KEY required)</span>}
+        FIDS — MAJOR AIRPORTS {!hasFids && <span style={{ color: 'var(--text-dim)', fontSize: 11 }}>(AIRLABS_KEY required)</span>}
       </div>
       {hasFids
         ? airports.map(a => (
@@ -362,16 +362,16 @@ function WarningPanel({ seismic }) {
   return (
     <div style={{ overflowY: 'auto', padding: '6px 10px', flex: 1 }}>
       {recentQuakes.length > 0 && (
-        <div style={{ marginBottom: 6, color: 'var(--accent-orange)', fontSize: 10, fontFamily: 'var(--font-mono)' }}>
+        <div style={{ marginBottom: 6, color: 'var(--accent-orange)', fontSize: 12, fontFamily: 'var(--font-mono)' }}>
           RECENT SEISMIC ACTIVITY
         </div>
       )}
       {recentQuakes.map((e, i) => (
         <div key={e.id ?? i} style={{ display: 'flex', gap: 8, padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.04)', alignItems: 'flex-start' }}>
-          <span style={{ fontSize: 12, flexShrink: 0 }}>📡</span>
+          <span style={{ fontSize: 14, flexShrink: 0 }}>📡</span>
           <div>
-            <div style={{ fontSize: 11, color: 'var(--text-primary)' }}>M{e.magnitude?.toFixed(1)} — {e.place}</div>
-            <div style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>Depth: {e.depth}km</div>
+            <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>M{e.magnitude?.toFixed(1)} — {e.place}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>Depth: {e.depth}km</div>
           </div>
         </div>
       ))}
@@ -381,10 +381,10 @@ function WarningPanel({ seismic }) {
         { icon: '🟡', title: 'Parliament — AUKUS submarine program costings report', area: 'Canberra', time: '2h ago' },
       ].map((a, i) => (
         <div key={i} style={{ display: 'flex', gap: 8, padding: '5px 6px', borderBottom: '1px solid rgba(255,255,255,0.04)', alignItems: 'flex-start' }}>
-          <span style={{ fontSize: 12, flexShrink: 0 }}>{a.icon}</span>
+          <span style={{ fontSize: 14, flexShrink: 0 }}>{a.icon}</span>
           <div>
-            <div style={{ fontSize: 11, color: 'var(--text-primary)' }}>{a.title}</div>
-            <div style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>{a.area} · {a.time}</div>
+            <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>{a.title}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>{a.area} · {a.time}</div>
           </div>
         </div>
       ))}

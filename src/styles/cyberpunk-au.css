@@ -528,7 +528,7 @@ body {
   gap: 6px;
   padding: 8px 16px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 1px;
   color: var(--text-muted);
   border: none;
@@ -1215,10 +1215,71 @@ body {
 }
 .tv-config-btn:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
 
-.tv-url-editor {
+.tv-channel-tabs {
   display: flex;
   gap: 4px;
+  overflow-x: auto;
+  padding: 0 0 6px 0;
+  scrollbar-width: none;
+}
+.tv-channel-tabs::-webkit-scrollbar { display: none; }
+
+.tv-tab-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.tv-channel-tab {
+  padding: 2px 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.tv-channel-tab.active {
+  color: var(--accent-blue);
+  border-color: var(--accent-blue);
+  background: rgba(0, 168, 255, 0.08);
+}
+.tv-channel-tab:hover:not(.active) {
+  color: var(--text-secondary);
+  border-color: var(--text-muted);
+}
+
+.tv-channel-remove {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--accent-red);
+  color: #fff;
+  border: none;
+  font-size: 9px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.tv-add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   margin-bottom: 6px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
 }
 
 .tv-url-input {
@@ -1543,7 +1604,7 @@ body {
   align-items: center;
   gap: 5px;
   font-family: var(--font-mono);
-  font-size: 15px;
+  font-size: 17px;
   letter-spacing: 1.5px;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -1553,7 +1614,7 @@ body {
 
 .vitals-note {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-dim);
   letter-spacing: 0.5px;
   margin-top: 2px;
@@ -1574,7 +1635,7 @@ body {
 
 .fire-state {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--text-muted);
   letter-spacing: 1px;
@@ -1584,7 +1645,7 @@ body {
   width: 100%;
   text-align: center;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.3px;
   padding: 2px 2px;
@@ -1601,7 +1662,7 @@ body {
 
 .aq-city {
   font-family: var(--font-mono);
-  font-size: 15px;
+  font-size: 17px;
   color: var(--text-secondary);
 }
 
@@ -1616,14 +1677,14 @@ body {
 
 .aq-val {
   font-family: var(--font-mono);
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
   text-align: right;
 }
 
 .aq-label {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 0.3px;
 }
 
@@ -1638,13 +1699,13 @@ body {
 
 .reservoir-dam {
   font-family: var(--font-mono);
-  font-size: 15px;
+  font-size: 17px;
   color: var(--text-secondary);
 }
 
 .reservoir-city {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 11px;
   color: var(--text-dim);
   letter-spacing: 0.5px;
 }
@@ -1660,7 +1721,7 @@ body {
 
 .reservoir-pct {
   font-family: var(--font-mono);
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
   text-align: right;
 }
@@ -1676,7 +1737,7 @@ body {
 
 .gbr-temp {
   font-family: var(--font-mono);
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1;
@@ -1684,13 +1745,13 @@ body {
 
 .gbr-anomaly {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 0.5px;
 }
 
 .gbr-alert-badge {
   font-family: var(--font-mono);
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
   letter-spacing: 1px;
   padding: 4px 8px;

@@ -1,5 +1,18 @@
 import { useState, useEffect } from 'react'
-import { RefreshCw, Cloud, Wind, Droplets, Tv } from 'lucide-react'
+import { RefreshCw, Cloud, Wind, Droplets, Tv, Plus } from 'lucide-react'
+
+const PRESET_CHANNELS = [
+  { id: 'au-live', name: 'AU Live',  url: 'https://www.youtube.com/embed/vOTiJkg1voo?autoplay=1' },
+  { id: 'sky-au',  name: 'Sky AU',   url: 'https://www.youtube.com/embed/RTL8K1Tyjgw?autoplay=1' },
+  { id: 'cnn',     name: 'CNN',      url: 'https://www.youtube.com/embed/H0cPQhV5BhM?autoplay=1' },
+  { id: 'abc-au',  name: 'ABC News', url: 'https://www.youtube.com/embed/w84UV-XXBtQ?autoplay=1' },
+]
+
+function toEmbedUrl(raw) {
+  if (!raw) return ''
+  const m = raw.match(/[?&]v=([a-zA-Z0-9_-]{11})/) ?? raw.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/)
+  return m ? `https://www.youtube.com/embed/${m[1]}?autoplay=1` : raw.trim()
+}
 
 const WEATHER_CITIES = [
   { name: 'Sydney',    region: 'NSW', temp: 22, desc: 'Partly cloudy', humidity: 62, wind: 15, icon: '⛅' },
@@ -15,11 +28,15 @@ const WEATHER_CITIES = [
 export default function LeftSidebar({ feedStats, onForcePoll, weather: weatherProp }) {
   const [polling,    setPolling]    = useState(false)
   const [weather,    setWeather]    = useState(weatherProp || WEATHER_CITIES)
-  const [streamUrl,  setStreamUrl]  = useState(
-    () => localStorage.getItem('tv_stream_url') || ''
+  const [channels, setChannels] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('tv_channels')) ?? PRESET_CHANNELS }
+    catch { return PRESET_CHANNELS }
+  })
+  const [activeId, setActiveId] = useState(
+    () => localStorage.getItem('tv_active_id') ?? PRESET_CHANNELS[0].id
   )
-  const [editingUrl, setEditingUrl] = useState(false)
-  const [urlDraft,   setUrlDraft]   = useState('')
+  const [adding,   setAdding]   = useState(false)
+  const [draft,    setDraft]    = useState({ name: '', url: '' })
 
   useEffect(() => {
     if (weatherProp) setWeather(weatherProp)
@@ -45,16 +62,35 @@ export default function LeftSidebar({ feedStats, onForcePoll, weather: weatherPr
     setTimeout(() => setPolling(false), 2000)
   }
 
-  const openUrlEditor = () => {
-    setUrlDraft(streamUrl)
-    setEditingUrl(true)
+  const activeChannel = channels.find(c => c.id === activeId) ?? channels[0]
+
+  const persistChannels = (next) => {
+    setChannels(next)
+    localStorage.setItem('tv_channels', JSON.stringify(next))
   }
 
-  const saveStreamUrl = () => {
-    const url = urlDraft.trim()
-    setStreamUrl(url)
-    localStorage.setItem('tv_stream_url', url)
-    setEditingUrl(false)
+  const selectChannel = (id) => {
+    setActiveId(id)
+    localStorage.setItem('tv_active_id', id)
+  }
+
+  const addChannel = () => {
+    const url = toEmbedUrl(draft.url)
+    if (!url) return
+    const id   = `ch-${Date.now()}`
+    const name = draft.name.trim() || 'Custom'
+    const next = [...channels, { id, name, url }]
+    persistChannels(next)
+    selectChannel(id)
+    setDraft({ name: '', url: '' })
+    setAdding(false)
+  }
+
+  const removeChannel = (id) => {
+    const next = channels.filter(c => c.id !== id)
+    if (next.length === 0) return
+    persistChannels(next)
+    if (activeId === id) selectChannel(next[0].id)
   }
 
   return (
@@ -122,34 +158,61 @@ export default function LeftSidebar({ feedStats, onForcePoll, weather: weatherPr
       {/* ── TV Livestream ── */}
       <div className="tv-stream-section">
         <div className="tv-stream-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: 2, color: 'var(--accent-blue)', textTransform: 'uppercase' }}>
-            <Tv size={10} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: 2, color: 'var(--accent-blue)', textTransform: 'uppercase' }}>
+            <Tv size={11} />
             TV LIVESTREAM
           </div>
-          <button className="tv-config-btn" onClick={editingUrl ? () => setEditingUrl(false) : openUrlEditor}>
-            {editingUrl ? '✕' : '⚙'}
+          <button className="tv-config-btn" onClick={() => setAdding(prev => !prev)} title="Add channel">
+            {adding ? '✕' : <Plus size={11} />}
           </button>
         </div>
 
-        {editingUrl && (
-          <div className="tv-url-editor">
+        {/* Channel selector tabs */}
+        <div className="tv-channel-tabs">
+          {channels.map(ch => (
+            <div key={ch.id} className="tv-tab-wrap">
+              <button
+                className={`tv-channel-tab${ch.id === activeId ? ' active' : ''}`}
+                onClick={() => selectChannel(ch.id)}
+              >
+                {ch.name}
+              </button>
+              {channels.length > 1 && ch.id === activeId && (
+                <button className="tv-channel-remove" onClick={() => removeChannel(ch.id)} title="Remove">×</button>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Add channel form */}
+        {adding && (
+          <div className="tv-add-form">
             <input
               className="tv-url-input"
-              value={urlDraft}
-              onChange={e => setUrlDraft(e.target.value)}
-              placeholder="YouTube embed URL…"
-              autoFocus
-              onKeyDown={e => e.key === 'Enter' && saveStreamUrl()}
+              value={draft.name}
+              onChange={e => setDraft(prev => ({ ...prev, name: e.target.value }))}
+              placeholder="Name (e.g. Sky AU)"
             />
-            <button className="tv-url-save" onClick={saveStreamUrl}>SET</button>
+            <div style={{ display: 'flex', gap: 4 }}>
+              <input
+                className="tv-url-input"
+                value={draft.url}
+                onChange={e => setDraft(prev => ({ ...prev, url: e.target.value }))}
+                placeholder="YouTube URL or embed URL"
+                onKeyDown={e => e.key === 'Enter' && addChannel()}
+                autoFocus
+              />
+              <button className="tv-url-save" onClick={addChannel}>ADD</button>
+            </div>
           </div>
         )}
 
         <div className="tv-stream-frame">
-          {streamUrl ? (
+          {activeChannel?.url ? (
             <iframe
-              src={streamUrl}
-              title="TV Livestream"
+              key={activeId}
+              src={activeChannel.url}
+              title={activeChannel.name}
               allow="autoplay; encrypted-media"
               allowFullScreen
               style={{ width: '100%', height: '100%', border: 'none' }}
@@ -157,10 +220,9 @@ export default function LeftSidebar({ feedStats, onForcePoll, weather: weatherPr
           ) : (
             <div className="tv-placeholder">
               <Tv size={18} style={{ color: 'var(--text-dim)', marginBottom: 6 }} />
-              <div style={{ color: 'var(--text-dim)', fontSize: 9, fontFamily: 'var(--font-mono)', textAlign: 'center', lineHeight: 1.6 }}>
-                NO STREAM CONFIGURED<br />
-                <span style={{ color: 'var(--accent-blue)' }}>Click ⚙ to set embed URL</span><br />
-                <span style={{ color: 'var(--text-dim)', fontSize: 8 }}>e.g. YouTube embed src</span>
+              <div style={{ color: 'var(--text-dim)', fontSize: 11, fontFamily: 'var(--font-mono)', textAlign: 'center', lineHeight: 1.6 }}>
+                NO STREAM<br />
+                <span style={{ color: 'var(--accent-blue)' }}>Click + to add a channel</span>
               </div>
             </div>
           )}

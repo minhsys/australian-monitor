@@ -508,7 +508,7 @@ body {
    MAP BOTTOM PANEL (tabs + content)
    ============================================================ */
 .map-panel {
-  height: 270px;
+  height: 380px;
   border-top: 1px solid var(--border-bright);
   background: var(--bg-panel);
   display: flex;

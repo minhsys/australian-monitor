@@ -202,6 +202,7 @@ async function runAllPollers() {
   // Weather
   if (results[2].status === 'fulfilled') {
     store.weather = results[2].value
+    broadcast('weather', store.weather)
     online++
   }
 
@@ -266,7 +267,7 @@ async function bootstrap() {
   startPolling()
 
   // Phase 2: live map data pollers
-  startFlightsPoller(broadcast)
+  startFlightsPoller(broadcast, store)
   startShipsWatcher(broadcast)
   startSeismicPoller(broadcast)
   startFiresPoller(broadcast)

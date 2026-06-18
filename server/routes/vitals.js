@@ -96,46 +96,36 @@ async function fetchReservoirLevels() {
   return { reservoirs: RESERVOIRS, source: 'static' }
 }
 
-// ── GBR Sea Surface Temperature — NOAA CoralWatch ───────────────────
-const NOAA_GBR_URLS = [
-  'https://coralreefwatch.noaa.gov/vs/gauges/json/great_barrier_reef.json',
-  'https://coralreefwatch.noaa.gov/product/vs/gaugesV3.5/data/great_barrier_reef.txt',
-]
+// ── GBR Sea Surface Temperature — Open-Meteo Marine API (free, no key) ──
+// Central GBR: lat -18.0, lon 148.0
+const GBR_MARINE_URL =
+  'https://marine-api.open-meteo.com/v1/marine' +
+  '?latitude=-18.0&longitude=148.0' +
+  '&hourly=sea_surface_temperature&timezone=Australia/Brisbane&forecast_days=1'
 
-function gbrSeasonalMock() {
-  const month  = new Date().getMonth() + 1
-  const summer = month >= 11 || month <= 3
-  return {
-    sst:            +(summer ? 29.2 + Math.random() * 0.6 : 24.3 + Math.random() * 0.5).toFixed(1),
-    anomaly:        +(summer ? 1.2 + Math.random() * 0.4  : 0.2 + Math.random() * 0.3).toFixed(1),
-    bleachingAlert: summer ? 1 : 0,
-    source:         'mock',
-  }
-}
+// Monthly SST climatological baselines for the GBR (°C, Jan–Dec)
+const GBR_CLIMATOLOGY = [27.5, 27.8, 27.2, 26.0, 24.5, 23.2, 22.8, 23.2, 24.5, 25.5, 26.8, 27.2]
 
 async function fetchGbrSst() {
-  for (const url of NOAA_GBR_URLS) {
-    try {
-      const res = await fetch(url, {
-        headers: { 'User-Agent': 'AustraliaMonitor/1.0' },
-        signal: AbortSignal.timeout(10_000),
-      })
-      if (!res.ok) continue
-      const ct = res.headers.get('content-type') ?? ''
-      if (!ct.includes('json')) continue
-      const json = await res.json()
-      const sst = json.sst ?? json.sea_surface_temp ?? null
-      if (!sst) continue
-      return {
-        sst:            +sst.toFixed(1),
-        anomaly:        +(json.sst_anomaly ?? json.anomaly ?? 0).toFixed(1),
-        bleachingAlert: json.alert_level ?? 0,
-        source:         'noaa',
-      }
-    } catch { /* try next */ }
-  }
-  console.warn('[VITALS] NOAA GBR SST unavailable — using seasonal mock')
-  return gbrSeasonalMock()
+  const res = await fetch(GBR_MARINE_URL, {
+    headers: { 'User-Agent': 'AustraliaMonitor/1.0' },
+    signal: AbortSignal.timeout(10_000),
+  })
+  if (!res.ok) throw new Error(`Open-Meteo Marine HTTP ${res.status}`)
+  const json  = await res.json()
+  const temps = json.hourly?.sea_surface_temperature ?? []
+
+  const now       = new Date()
+  const hourIndex = now.getHours()
+  const sst = temps.slice(0, hourIndex + 1).reverse().find(t => t != null)
+           ?? temps.find(t => t != null)
+  if (sst == null) throw new Error('No SST values in response')
+
+  const baseline       = GBR_CLIMATOLOGY[now.getMonth()]
+  const anomaly        = +(sst - baseline).toFixed(1)
+  const bleachingAlert = sst >= 30 ? 2 : sst >= 29 ? 1 : 0
+
+  return { sst: +sst.toFixed(1), anomaly, bleachingAlert, source: 'open-meteo' }
 }
 
 // ── Aggregate ────────────────────────────────────────────────────────
@@ -151,7 +141,7 @@ export async function fetchVitals() {
     airQuality: aq.status   === 'fulfilled' ? aq.value   : [],
     fireDanger: fire.status === 'fulfilled' ? fire.value : { ratings: seasonalFDR(), source: 'seasonal' },
     reservoirs: res.status  === 'fulfilled' ? res.value  : { reservoirs: RESERVOIRS, source: 'static' },
-    gbr:        gbr.status  === 'fulfilled' ? gbr.value  : gbrSeasonalMock(),
+    gbr:        gbr.status  === 'fulfilled' ? gbr.value  : { sst: null, anomaly: null, bleachingAlert: 0, source: 'unavailable' },
     updatedAt:  new Date().toISOString(),
   }
   const aqOk = vitals.airQuality.filter(c => c.aqi != null).length

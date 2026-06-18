@@ -36,9 +36,98 @@ const HUB_COLOURS = {
   SIGINT: '#ff3d6b',
   RAAF:   '#00a8ff',
   RAN:    '#00ffcc',
+  ARMY:   '#4caf50',
   JOINT:  '#f5c842',
   RADAR:  '#a078ff',
 }
+
+const CIVILIAN_AIRPORTS = [
+  { name: 'Sydney (Kingsford Smith)', iata: 'SYD', lat: -33.94, lon: 151.18 },
+  { name: 'Melbourne (Tullamarine)',  iata: 'MEL', lat: -37.67, lon: 144.84 },
+  { name: 'Brisbane',                 iata: 'BNE', lat: -27.38, lon: 153.12 },
+  { name: 'Perth',                    iata: 'PER', lat: -31.94, lon: 115.97 },
+  { name: 'Adelaide',                 iata: 'ADL', lat: -34.95, lon: 138.53 },
+  { name: 'Darwin',                   iata: 'DRW', lat: -12.41, lon: 130.88 },
+  { name: 'Canberra',                 iata: 'CBR', lat: -35.31, lon: 149.19 },
+  { name: 'Hobart',                   iata: 'HBA', lat: -42.84, lon: 147.51 },
+  { name: 'Cairns',                   iata: 'CNS', lat: -16.89, lon: 145.76 },
+  { name: 'Gold Coast',               iata: 'OOL', lat: -28.16, lon: 153.51 },
+  { name: 'Townsville',               iata: 'TSV', lat: -19.25, lon: 146.77 },
+  { name: 'Alice Springs',            iata: 'ASP', lat: -23.81, lon: 133.90 },
+]
+
+const MAJOR_SEAPORTS = [
+  { name: 'Port of Brisbane',     lat: -27.37, lon: 153.17, type: 'CONTAINER' },
+  { name: 'Port Botany (Sydney)', lat: -33.97, lon: 151.20, type: 'CONTAINER' },
+  { name: 'Port of Melbourne',    lat: -37.83, lon: 144.93, type: 'CONTAINER' },
+  { name: 'Fremantle Port',       lat: -32.05, lon: 115.74, type: 'CONTAINER' },
+  { name: 'Port Adelaide',        lat: -34.84, lon: 138.49, type: 'CONTAINER' },
+  { name: 'Darwin Port',          lat: -12.47, lon: 130.85, type: 'BULK' },
+  { name: 'Port of Newcastle',    lat: -32.91, lon: 151.80, type: 'COAL' },
+  { name: 'Port Kembla',          lat: -34.48, lon: 150.91, type: 'STEEL' },
+  { name: 'Port Hedland',         lat: -20.32, lon: 118.60, type: 'IRON_ORE' },
+  { name: 'Gladstone Port',       lat: -23.86, lon: 151.25, type: 'LNG' },
+  { name: 'Hay Point (Coal)',     lat: -21.28, lon: 149.30, type: 'COAL' },
+]
+
+const ADF_BASES = [
+  { name: 'RAAF Base Tindal',               lat: -14.52, lon: 132.38, type: 'RAAF' },
+  { name: 'RAAF Base Darwin',               lat: -12.42, lon: 130.87, type: 'RAAF' },
+  { name: 'RAAF Base Williamtown',          lat: -32.80, lon: 151.83, type: 'RAAF' },
+  { name: 'RAAF Base Amberley',             lat: -27.64, lon: 152.71, type: 'RAAF' },
+  { name: 'RAAF Base Pearce',               lat: -31.67, lon: 116.02, type: 'RAAF' },
+  { name: 'RAAF Base Edinburgh',            lat: -34.70, lon: 138.62, type: 'RAAF' },
+  { name: 'RAAF Base Townsville',           lat: -19.25, lon: 146.77, type: 'RAAF' },
+  { name: 'RAAF Base Scherger',             lat: -12.64, lon: 142.10, type: 'RAAF' },
+  { name: 'HMAS Stirling',                  lat: -32.24, lon: 115.68, type: 'RAN' },
+  { name: 'HMAS Coonawarra (Darwin)',       lat: -12.46, lon: 130.85, type: 'RAN' },
+  { name: 'HMAS Kuttabul (Sydney)',         lat: -33.86, lon: 151.22, type: 'RAN' },
+  { name: 'HMAS Albatross (Nowra)',         lat: -34.95, lon: 150.53, type: 'RAN' },
+  { name: 'Holsworthy Barracks',            lat: -33.96, lon: 150.95, type: 'ARMY' },
+  { name: 'Lavarack Barracks (Townsville)', lat: -19.30, lon: 146.74, type: 'ARMY' },
+  { name: 'Robertson Barracks (Darwin)',    lat: -12.38, lon: 130.97, type: 'ARMY' },
+  { name: 'Gallipoli Barracks (Brisbane)',  lat: -27.56, lon: 152.94, type: 'ARMY' },
+  { name: 'JDFNWC Harold Holt',            lat: -21.82, lon: 114.16, type: 'JOINT' },
+  { name: 'Pine Gap (JDF)',                lat: -23.80, lon: 133.74, type: 'SIGINT' },
+  { name: 'JORN Alice Springs',            lat: -23.66, lon: 133.88, type: 'RADAR' },
+]
+
+const NATIONAL_INFRA = [
+  { name: 'Snowy Hydro (Tumut 3)',     lat: -35.93, lon: 148.28, type: 'HYDRO' },
+  { name: 'Loy Yang A Power Station',  lat: -38.27, lon: 146.67, type: 'COAL' },
+  { name: 'Lucas Heights (ANSTO)',     lat: -34.05, lon: 150.98, type: 'NUCLEAR' },
+  { name: 'Olympic Dam (BHP)',         lat: -30.44, lon: 136.88, type: 'MINING' },
+  { name: 'Pilbara Iron Ore Hub',      lat: -23.37, lon: 119.73, type: 'MINING' },
+  { name: 'North West Shelf LNG',      lat: -20.63, lon: 116.77, type: 'LNG' },
+  { name: 'Ichthys LNG (Darwin)',      lat: -12.44, lon: 130.83, type: 'LNG' },
+  { name: 'Curtis Island LNG',         lat: -23.87, lon: 151.23, type: 'LNG' },
+  { name: 'Basslink (TAS Connector)',  lat: -41.12, lon: 146.36, type: 'GRID' },
+  { name: 'Eraring Power Station',     lat: -33.07, lon: 151.55, type: 'COAL' },
+  { name: 'Hornsdale Wind Farm (SA)',  lat: -33.08, lon: 138.49, type: 'WIND' },
+  { name: 'Kogan Creek Power Stn',    lat: -26.72, lon: 150.52, type: 'COAL' },
+]
+
+const INFRA_ICON = { HYDRO:'💧', COAL:'🏭', NUCLEAR:'☢', MINING:'⛏', LNG:'🛢', GRID:'⚡', WIND:'🌀' }
+
+const RAIL_ROUTES = [
+  { name: 'East Coast Main Line', color: '#4caf50',
+    points: [[-27.47,153.02],[-33.87,151.21],[-37.81,144.97]] },
+  { name: 'The Ghan',            color: '#ff8f00',
+    points: [[-34.93,138.60],[-23.70,133.88],[-12.46,130.84]] },
+  { name: 'Indian Pacific',      color: '#9c27b0',
+    points: [[-31.95,115.86],[-30.75,121.47],[-31.51,133.03],[-34.93,138.60],[-33.87,151.21]] },
+  { name: 'Adelaide–Broken Hill', color: '#00bcd4',
+    points: [[-34.93,138.60],[-31.97,141.46],[-33.87,151.21]] },
+]
+
+const FINANCE_HUBS = [
+  { name: 'ASX + RBA + CBA HQ',      lat: -33.865, lon: 151.210, type: 'EXCHANGE' },
+  { name: 'Westpac Group HQ',         lat: -33.870, lon: 151.206, type: 'BANK' },
+  { name: 'ANZ + NAB HQ (Melbourne)', lat: -37.815, lon: 144.966, type: 'BANK' },
+  { name: 'BHP + Rio Tinto Perth',    lat: -31.953, lon: 115.862, type: 'MINING' },
+  { name: 'Santos Energy (Adelaide)', lat: -34.930, lon: 138.601, type: 'ENERGY' },
+  { name: 'Macquarie Group (Sydney)', lat: -33.868, lon: 151.204, type: 'FINANCE' },
+]
 
 const TABS = [
   { id: 'news',      label: '📰 NEWS & AI BRIEF' },
@@ -49,12 +138,12 @@ const TABS = [
 const LAYER_DEFAULTS = {
   intelligenceHubs: true,
   liveFlights:      true,
-  trains:           true,
+  trains:           false,
   shipping:         true,
   seismic:          false,
   cameras:          false,
-  airports:         true,
-  seaports:         true,
+  airports:         false,
+  seaports:         false,
   infrastructure:   false,
   militaryBases:    false,
   financeLayer:     false,
@@ -191,12 +280,120 @@ function redrawFires(group, fires) {
   })
 }
 
+function drawAirports(group) {
+  CIVILIAN_AIRPORTS.forEach(ap => {
+    const icon = L.divIcon({
+      className: '',
+      html: `<div style="color:#00a8ff;font-size:14px;filter:drop-shadow(0 0 5px #00a8ff)">✈</div>`,
+      iconSize: [14, 14], iconAnchor: [7, 7],
+    })
+    L.marker([ap.lat, ap.lon], { icon })
+      .bindTooltip(`<b>${ap.iata}</b> — ${ap.name}`, { direction: 'top', offset: [0, -8] })
+      .addTo(group)
+  })
+}
+
+function drawSeaports(group) {
+  MAJOR_SEAPORTS.forEach(sp => {
+    const icon = L.divIcon({
+      className: '',
+      html: `<div style="color:#00ffcc;font-size:14px;filter:drop-shadow(0 0 5px #00ffcc)">⚓</div>`,
+      iconSize: [14, 14], iconAnchor: [7, 7],
+    })
+    L.marker([sp.lat, sp.lon], { icon })
+      .bindTooltip(`<b>${sp.name}</b> [${sp.type}]`, { direction: 'top', offset: [0, -8] })
+      .addTo(group)
+  })
+}
+
+function drawMilitaryBases(group) {
+  ADF_BASES.forEach(base => {
+    const col = HUB_COLOURS[base.type] || '#888'
+    const icon = L.divIcon({
+      className: '',
+      html: `<div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:10px solid ${col};filter:drop-shadow(0 0 4px ${col})"></div>`,
+      iconSize: [12, 10], iconAnchor: [6, 10],
+    })
+    L.marker([base.lat, base.lon], { icon })
+      .bindTooltip(`<b>${base.name}</b> [${base.type}]`, { direction: 'top', offset: [0, -10] })
+      .addTo(group)
+  })
+}
+
+function drawInfrastructure(group) {
+  NATIONAL_INFRA.forEach(item => {
+    const emoji = INFRA_ICON[item.type] || '⚡'
+    const icon = L.divIcon({
+      className: '',
+      html: `<div style="font-size:14px;filter:drop-shadow(0 0 5px rgba(255,200,0,0.9))">${emoji}</div>`,
+      iconSize: [16, 16], iconAnchor: [8, 8],
+    })
+    L.marker([item.lat, item.lon], { icon })
+      .bindTooltip(`<b>${item.name}</b> [${item.type}]`, { direction: 'top', offset: [0, -8] })
+      .addTo(group)
+  })
+}
+
+function drawRailRoutes(group) {
+  RAIL_ROUTES.forEach(route => {
+    L.polyline(route.points, {
+      color: route.color, weight: 2, opacity: 0.7, dashArray: '4 4',
+    })
+      .bindTooltip(`<b>${route.name}</b>`, { direction: 'center', sticky: true })
+      .addTo(group)
+  })
+}
+
+function drawFinanceHubs(group) {
+  const typeIcon = { EXCHANGE: '📈', BANK: '🏦', MINING: '⛏', ENERGY: '🛢', FINANCE: '💹' }
+  FINANCE_HUBS.forEach(hub => {
+    const icon = L.divIcon({
+      className: '',
+      html: `<div style="font-size:13px;filter:drop-shadow(0 0 4px rgba(100,255,100,0.8))">${typeIcon[hub.type] || '💹'}</div>`,
+      iconSize: [14, 14], iconAnchor: [7, 7],
+    })
+    L.marker([hub.lat, hub.lon], { icon })
+      .bindTooltip(`<b>${hub.name}</b>`, { direction: 'top', offset: [0, -8] })
+      .addTo(group)
+  })
+}
+
+function drawCables(group, cablesData) {
+  if (!cablesData?.cables?.features) return
+  cablesData.cables.features.forEach(f => {
+    try {
+      const coords = f.geometry?.type === 'MultiLineString'
+        ? f.geometry.coordinates.flat(1)
+        : f.geometry?.coordinates ?? []
+      if (coords.length < 2) return
+      const latlngs = coords.map(([lon, lat]) => [lat, lon])
+      L.polyline(latlngs, { color: '#ff6b35', weight: 1.5, opacity: 0.6 })
+        .bindTooltip(`<b>${f.properties?.name ?? 'Submarine Cable'}</b>`, { sticky: true })
+        .addTo(group)
+    } catch { /* skip malformed feature */ }
+  })
+  cablesData.landings?.features?.forEach(f => {
+    try {
+      const [lon, lat] = f.geometry.coordinates
+      const icon = L.divIcon({
+        className: '',
+        html: `<div style="width:6px;height:6px;background:#ff6b35;border-radius:50%;border:1px solid #fff;box-shadow:0 0 5px #ff6b35"></div>`,
+        iconSize: [6, 6], iconAnchor: [3, 3],
+      })
+      L.marker([lat, lon], { icon })
+        .bindTooltip(f.properties?.name ?? 'Landing Point', { direction: 'top', offset: [0, -5] })
+        .addTo(group)
+    } catch { /* skip */ }
+  })
+}
+
 /* ── Component ── */
 export default function MapCenter({ newsItems, flights, ships, seismic, fires, fids, aiBrief }) {
   const mapRef    = useRef(null)
   const groupsRef = useRef({})
   const [activeTab, setActiveTab] = useState('news')
   const [layers, setLayers]       = useState(LAYER_DEFAULTS)
+  const [cablesData, setCablesData] = useState(null)
 
   /* ── Init map once ── */
   useEffect(() => {
@@ -217,13 +414,23 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
 
     L.control.zoom({ position: 'topleft' }).addTo(map)
 
+    const on  = g => L.layerGroup().addTo(map)
+    const off = () => L.layerGroup()
+
     const groups = {
-      newsClusters:     L.layerGroup().addTo(map),
-      intelligenceHubs: L.layerGroup().addTo(map),
-      liveFlights:      L.layerGroup().addTo(map),
-      shipping:         L.layerGroup().addTo(map),
-      fires:            L.layerGroup().addTo(map),
-      seismic:          L.layerGroup(),    // default off
+      newsClusters:     on(),
+      intelligenceHubs: on(),
+      liveFlights:      on(),
+      shipping:         on(),
+      fires:            on(),
+      seismic:          off(),   // default off
+      airports:         off(),   // default off
+      seaports:         off(),   // default off
+      militaryBases:    off(),   // default off
+      infrastructure:   off(),   // default off
+      trains:           off(),   // default off
+      financeLayer:     off(),   // default off
+      submarineCables:  off(),   // default off
     }
 
     groupsRef.current = groups
@@ -231,6 +438,12 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
 
     drawNewsClusters(groups.newsClusters)
     drawIntelHubs(groups.intelligenceHubs)
+    drawAirports(groups.airports)
+    drawSeaports(groups.seaports)
+    drawMilitaryBases(groups.militaryBases)
+    drawInfrastructure(groups.infrastructure)
+    drawRailRoutes(groups.trains)
+    drawFinanceHubs(groups.financeLayer)
 
     return () => {
       map.remove()
@@ -263,6 +476,19 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
     if (!g) return
     redrawFires(g, layers.fires ? (fires || []) : [])
   }, [fires, layers.fires])
+
+  /* ── Fetch cables once on mount ── */
+  useEffect(() => {
+    fetch('/api/cables').then(r => r.json()).then(setCablesData).catch(() => {})
+  }, [])
+
+  /* ── Draw cables when data arrives or layer toggled ── */
+  useEffect(() => {
+    const g = groupsRef.current.submarineCables
+    if (!g) return
+    g.clearLayers()
+    if (layers.submarineCables && cablesData) drawCables(g, cablesData)
+  }, [cablesData, layers.submarineCables])
 
   /* ── Toggle overlay visibility ── */
   const toggleLayer = (key) => {
@@ -317,39 +543,46 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
 
 /* ── Transport tab ── */
 function TransportPanel({ flights, ships, fids }) {
-  const airports = Object.values(fids || {})
-  const hasFids  = airports.length > 0
+  const airports   = Object.values(fids || {})
+  const isAirlabs  = airports[0]?.source === 'airlabs'
+  const isOpenSky  = airports[0]?.source === 'opensky'
+  const sourceLabel = isAirlabs ? 'AirLabs · scheduled' : isOpenSky ? 'OpenSky · TCA traffic' : null
 
   return (
     <div style={{ padding: '12px 16px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: 13 }}>
       <div style={{ display: 'flex', gap: 24, marginBottom: 10 }}>
         <span style={{ color: 'var(--accent-cyan)' }}>✈ {flights?.length ?? 0} aircraft</span>
-        <span style={{ color: 'var(--accent-green)' }}>🚢 {ships?.length ?? 0} vessels</span>
+        <span style={{ color: 'var(--accent-green)' }}>🚢 {Object.keys(ships || {}).length > 0 ? Object.keys(ships).length : (ships?.length ?? 0)} vessels</span>
       </div>
-      <div style={{ color: 'var(--accent-cyan)', marginBottom: 8 }}>
-        FIDS — MAJOR AIRPORTS {!hasFids && <span style={{ color: 'var(--text-dim)', fontSize: 11 }}>(AIRLABS_KEY required)</span>}
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <span style={{ color: 'var(--accent-cyan)' }}>AIRPORT TRAFFIC</span>
+        {sourceLabel && (
+          <span style={{ fontSize: 10, color: 'var(--accent-green)', border: '1px solid var(--accent-green)', padding: '1px 5px', borderRadius: 3 }}>
+            LIVE · {sourceLabel}
+          </span>
+        )}
+        {!airports.length && (
+          <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>connecting…</span>
+        )}
       </div>
-      {hasFids
-        ? airports.map(a => (
+
+      {airports.length > 0
+        ? airports.sort((a, b) => b.departures - a.departures).map(a => (
             <div key={a.iata} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-              <span style={{ width: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.iata} — {a.name}</span>
-              <span>DEP <span style={{ color: 'var(--accent-blue)' }}>{a.departures}</span></span>
-              <span>DLY <span style={{ color: a.delayed > 5 ? 'var(--accent-red)' : 'var(--accent-orange)' }}>{a.delayed}</span></span>
+              <span style={{ width: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.iata} — {a.name}</span>
+              <span>{isAirlabs ? 'DEP' : 'TCA'} <span style={{ color: 'var(--accent-blue)' }}>{a.departures}</span></span>
+              {a.delayed != null
+                ? <span>DLY <span style={{ color: a.delayed > 5 ? 'var(--accent-red)' : 'var(--accent-orange)' }}>{a.delayed}</span></span>
+                : <span style={{ color: 'var(--text-dim)', fontSize: 11 }}>DLY —</span>
+              }
             </div>
           ))
-        : [
-            { iata: 'SYD', name: 'Kingsford Smith', dep: 142, delayed: 7 },
-            { iata: 'MEL', name: 'Tullamarine',     dep: 128, delayed: 4 },
-            { iata: 'BNE', name: 'Brisbane',        dep: 87,  delayed: 2 },
-            { iata: 'PER', name: 'Perth',           dep: 64,  delayed: 3 },
-            { iata: 'DRW', name: 'Darwin',          dep: 18,  delayed: 1 },
-          ].map(a => (
-            <div key={a.iata} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.04)', opacity: 0.5 }}>
-              <span style={{ width: 140 }}>{a.iata} — {a.name}</span>
-              <span>DEP <span style={{ color: 'var(--accent-blue)' }}>{a.dep}</span></span>
-              <span>DLY <span style={{ color: 'var(--accent-orange)' }}>{a.delayed}</span></span>
+        : (
+            <div style={{ color: 'var(--text-dim)', fontSize: 11, paddingTop: 4 }}>
+              Waiting for OpenSky data (up to 5 min on first start)
             </div>
-          ))
+          )
       }
     </div>
   )

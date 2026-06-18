@@ -4,7 +4,7 @@ import { RefreshCw, Cloud, Wind, Droplets, Tv, Plus } from 'lucide-react'
 const PRESET_CHANNELS = [
   { id: 'au-live', name: 'AU Live',  url: 'https://www.youtube.com/embed/vOTiJkg1voo?autoplay=1' },
   { id: 'sky-au',  name: 'Sky AU',   url: 'https://www.youtube.com/embed/RTL8K1Tyjgw?autoplay=1' },
-  { id: 'cnn',     name: 'CNN',      url: 'https://www.youtube.com/embed/H0cPQhV5BhM?autoplay=1' },
+  { id: 'cnn',     name: 'CNN',      url: 'https://www.youtube.com/embed/GotlA1KKWoo?autoplay=1' },
   { id: 'abc-au',  name: 'ABC News', url: 'https://www.youtube.com/embed/w84UV-XXBtQ?autoplay=1' },
 ]
 
@@ -14,20 +14,9 @@ function toEmbedUrl(raw) {
   return m ? `https://www.youtube.com/embed/${m[1]}?autoplay=1` : raw.trim()
 }
 
-const WEATHER_CITIES = [
-  { name: 'Sydney',    region: 'NSW', temp: 22, desc: 'Partly cloudy', humidity: 62, wind: 15, icon: '⛅' },
-  { name: 'Melbourne', region: 'VIC', temp: 14, desc: 'Shower likely', humidity: 78, wind: 22, icon: '🌧' },
-  { name: 'Brisbane',  region: 'QLD', temp: 28, desc: 'Sunny',         humidity: 55, wind: 12, icon: '☀️' },
-  { name: 'Perth',     region: 'WA',  temp: 25, desc: 'Clear',         humidity: 48, wind: 18, icon: '🌤' },
-  { name: 'Adelaide',  region: 'SA',  temp: 19, desc: 'Cloudy',        humidity: 70, wind: 20, icon: '☁️' },
-  { name: 'Darwin',    region: 'NT',  temp: 33, desc: 'Humid/Hazy',   humidity: 82, wind: 9,  icon: '🌫' },
-  { name: 'Canberra',  region: 'ACT', temp: 11, desc: 'Clear & cold',  humidity: 55, wind: 8,  icon: '🌙' },
-  { name: 'Hobart',    region: 'TAS', temp: 8,  desc: 'Windy',        humidity: 85, wind: 35, icon: '💨' },
-]
-
 export default function LeftSidebar({ feedStats, onForcePoll, weather: weatherProp }) {
   const [polling,    setPolling]    = useState(false)
-  const [weather,    setWeather]    = useState(weatherProp || WEATHER_CITIES)
+  const [weather,    setWeather]    = useState(weatherProp ?? [])
   const [channels, setChannels] = useState(() => {
     try { return JSON.parse(localStorage.getItem('tv_channels')) ?? PRESET_CHANNELS }
     catch { return PRESET_CHANNELS }
@@ -40,20 +29,6 @@ export default function LeftSidebar({ feedStats, onForcePoll, weather: weatherPr
 
   useEffect(() => {
     if (weatherProp) setWeather(weatherProp)
-  }, [weatherProp])
-
-  /* cosmetic flicker until real weather is wired */
-  useEffect(() => {
-    if (weatherProp) return
-    const t = setInterval(() => {
-      setWeather(prev =>
-        prev.map(c => ({
-          ...c,
-          temp: c.temp + (Math.random() > 0.8 ? (Math.random() > 0.5 ? 1 : -1) : 0),
-        }))
-      )
-    }, 30_000)
-    return () => clearInterval(t)
   }, [weatherProp])
 
   const handleForcePoll = async () => {
@@ -132,9 +107,14 @@ export default function LeftSidebar({ feedStats, onForcePoll, weather: weatherPr
       <div className="weather-section">
         <div className="weather-section-title">
           <Cloud size={10} />
-          BOM Weather — 8 Cities
+          Live Weather — 8 Cities
         </div>
         <div className="weather-grid">
+          {weather.length === 0 && (
+            <div style={{ color: 'var(--text-dim)', fontSize: 10, fontFamily: 'var(--font-mono)', padding: '8px 0', letterSpacing: 1 }}>
+              LOADING...
+            </div>
+          )}
           {weather.map(city => (
             <div className="weather-city" key={city.name}>
               <div className="weather-city-header">

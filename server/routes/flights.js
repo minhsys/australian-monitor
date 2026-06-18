@@ -23,13 +23,14 @@ function parseStates(states) {
     .filter(f => f.lat !== null && f.lon !== null && !f.onGround)
 }
 
-export function startFlightsPoller(broadcast) {
+export function startFlightsPoller(broadcast, store) {
   async function poll() {
     try {
       const res = await fetch(OPENSKY_URL, { signal: AbortSignal.timeout(7_000) })
       if (!res.ok) throw new Error(`OpenSky HTTP ${res.status}`)
       const data = await res.json()
       const flights = parseStates(data.states)
+      if (store) store.flights = flights
       broadcast('flights', flights)
       console.log(`[FLIGHTS] ${flights.length} aircraft in AU airspace`)
     } catch (err) {

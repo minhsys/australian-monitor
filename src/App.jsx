@@ -66,15 +66,31 @@ export default function App() {
   useEffect(() => {
     const poll = async () => {
       try {
-        const [newsRes, finRes] = await Promise.allSettled([
+        const [newsRes, finRes, weatherRes, energyRes, absRes, vitalsRes] = await Promise.allSettled([
           fetch('/api/news').then(r => r.json()),
           fetch('/api/financial').then(r => r.json()),
+          fetch('/api/weather').then(r => r.json()),
+          fetch('/api/energy').then(r => r.json()),
+          fetch('/api/abs').then(r => r.json()),
+          fetch('/api/vitals').then(r => r.json()),
         ])
         if (newsRes.status === 'fulfilled' && newsRes.value?.items) {
           setNewsItems(newsRes.value.items)
         }
         if (finRes.status === 'fulfilled') {
           setFinancial(finRes.value)
+        }
+        if (weatherRes.status === 'fulfilled' && Array.isArray(weatherRes.value)) {
+          setWeather(weatherRes.value)
+        }
+        if (energyRes.status === 'fulfilled' && energyRes.value?.total_mw) {
+          setEnergy(energyRes.value)
+        }
+        if (absRes.status === 'fulfilled' && absRes.value?.unemployment) {
+          setAbsData(absRes.value)
+        }
+        if (vitalsRes.status === 'fulfilled' && vitalsRes.value?.airQuality) {
+          setVitals(vitalsRes.value)
         }
       } catch { /* server not up yet in pure client dev mode — use mock data */ }
     }

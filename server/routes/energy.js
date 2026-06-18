@@ -16,14 +16,17 @@ const SCHED_FUEL_SPLIT = {
   TAS: { coal: 0.00, gas: 0.08, hydro: 0.92 },
 }
 
-// Semi-scheduled generation is wind + utility solar (varies by region + season)
-// These are rough daytime ratios — at night solar → 0, wind → higher share
-const SEMI_FUEL_SPLIT = {
-  NSW: { wind: 0.55, solar: 0.45 },
-  VIC: { wind: 0.65, solar: 0.35 },
-  QLD: { wind: 0.40, solar: 0.60 },
-  SA:  { wind: 0.60, solar: 0.40 },
-  TAS: { wind: 0.85, solar: 0.15 },
+// Semi-scheduled = wind + utility solar. Solar fraction varies by hour of day.
+// Peak solar capacity ratios per region (daytime peak fractions)
+const SOLAR_PEAK_FRAC = { NSW: 0.45, VIC: 0.35, QLD: 0.60, SA: 0.40, TAS: 0.15 }
+
+function semiSplit(regionId) {
+  const hour = new Date().getHours()
+  // Solar follows a bell curve: zero before 6am/after 8pm, peak around 1pm
+  const solarFrac = (hour >= 6 && hour <= 20)
+    ? Math.sin(Math.PI * (hour - 6) / 14) * (SOLAR_PEAK_FRAC[regionId] ?? 0.40)
+    : 0
+  return { wind: +(1 - solarFrac).toFixed(3), solar: +solarFrac.toFixed(3) }
 }
 
 async function fetchAemo() {
@@ -62,8 +65,8 @@ async function fetchAemo() {
     totals.gas   += sched * sf.gas
     totals.hydro += sched * sf.hydro
 
-    // Apportion semi-scheduled gen into wind / solar
-    const mf = SEMI_FUEL_SPLIT[id]
+    // Apportion semi-scheduled gen into wind / solar (time-of-day aware)
+    const mf = semiSplit(id)
     totals.wind  += semi * mf.wind
     totals.solar += semi * mf.solar
   }

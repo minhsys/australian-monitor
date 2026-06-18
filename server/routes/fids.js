@@ -1,64 +1,96 @@
 import fetch from 'node-fetch'
 
-// Free tier: 1,000 req/month → stagger polls, 30min interval
-const POLL_MS = 30 * 60 * 1000
+const POLL_MS_AIRLABS  = 30 * 60 * 1000
+const POLL_MS_FALLBACK =  5 * 60 * 1000
 
 const AIRPORTS = [
-  { iata: 'SYD', name: 'Sydney Kingsford Smith' },
-  { iata: 'MEL', name: 'Melbourne Tullamarine' },
-  { iata: 'BNE', name: 'Brisbane' },
-  { iata: 'PER', name: 'Perth' },
-  { iata: 'DRW', name: 'Darwin' },
-  { iata: 'ADL', name: 'Adelaide' },
-  { iata: 'HBA', name: 'Hobart' },
-  { iata: 'CNS', name: 'Cairns' },
+  { iata: 'SYD', name: 'Kingsford Smith', lat: -33.94, lon: 151.18 },
+  { iata: 'MEL', name: 'Tullamarine',     lat: -37.67, lon: 144.84 },
+  { iata: 'BNE', name: 'Brisbane',        lat: -27.38, lon: 153.12 },
+  { iata: 'PER', name: 'Perth',           lat: -31.94, lon: 115.97 },
+  { iata: 'DRW', name: 'Darwin',          lat: -12.41, lon: 130.88 },
+  { iata: 'ADL', name: 'Adelaide',        lat: -34.95, lon: 138.53 },
+  { iata: 'CBR', name: 'Canberra',        lat: -35.31, lon: 149.19 },
+  { iata: 'HBA', name: 'Hobart',          lat: -42.84, lon: 147.51 },
 ]
+
+function distKm(lat1, lon1, lat2, lon2) {
+  const R = 6371
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLon = (lon2 - lon1) * Math.PI / 180
+  const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+function deriveFromFlights(flights) {
+  const now = new Date().toISOString()
+  return Object.fromEntries(
+    AIRPORTS.map(ap => {
+      const nearby = (flights || []).filter(
+        f => f.lat != null && f.lon != null && distKm(f.lat, f.lon, ap.lat, ap.lon) < 150
+      )
+      return [ap.iata, {
+        iata: ap.iata, name: ap.name,
+        departures: nearby.length,
+        delayed:    null,
+        source:     'opensky',
+        updatedAt:  now,
+      }]
+    })
+  )
+}
 
 function buildUrl(iata, key) {
   return `https://airlabs.co/api/v9/schedules?dep_iata=${iata}&api_key=${key}`
 }
 
 function summarise(flights, iata, name) {
-  // dep_time_utc is "HH:MM" time-only — count all flights in the schedule response
   const all = flights || []
   return {
-    iata,
-    name,
+    iata, name,
     departures: all.length,
     delayed:    all.filter(f => (f.delayed ?? 0) > 15).length,
+    source:     'airlabs',
     updatedAt:  new Date().toISOString(),
   }
 }
 
 export function startFidsPoller(broadcast, store) {
   const key = process.env.AIRLABS_KEY
-  if (!key) {
-    console.warn('[FIDS] AIRLABS_KEY not set — FIDS disabled')
-    return
-  }
 
-  async function pollAirport(airport) {
-    try {
-      const res = await fetch(buildUrl(airport.iata, key), {
-        signal: AbortSignal.timeout(10_000),
-      })
-      if (!res.ok) throw new Error(`AirLabs HTTP ${res.status}`)
-      const data    = await res.json()
-      const summary = summarise(data.response, airport.iata, airport.name)
-
-      store.fids = { ...(store.fids ?? {}), [airport.iata]: summary }
-      broadcast('fids', store.fids)
-      console.log(`[FIDS] ${airport.iata}: ${summary.departures} deps, ${summary.delayed} delayed`)
-    } catch (err) {
-      console.warn(`[FIDS] ${airport.iata} failed:`, err.message)
+  if (key) {
+    async function pollAirport(airport) {
+      try {
+        const res = await fetch(buildUrl(airport.iata, key), { signal: AbortSignal.timeout(10_000) })
+        if (!res.ok) throw new Error(`AirLabs HTTP ${res.status}`)
+        const data    = await res.json()
+        const summary = summarise(data.response, airport.iata, airport.name)
+        store.fids = { ...(store.fids ?? {}), [airport.iata]: summary }
+        broadcast('fids', store.fids)
+        console.log(`[FIDS] ${airport.iata}: ${summary.departures} deps, ${summary.delayed} delayed`)
+      } catch (err) {
+        console.warn(`[FIDS] ${airport.iata} failed:`, err.message)
+      }
     }
+    AIRPORTS.forEach((airport, i) => {
+      setTimeout(() => {
+        pollAirport(airport)
+        setInterval(() => pollAirport(airport), POLL_MS_AIRLABS)
+      }, i * 2_000)
+    })
+  } else {
+    // Fallback: derive TCA traffic from live OpenSky positions already in store.flights
+    console.log('[FIDS] No AIRLABS_KEY — using OpenSky live position fallback')
+    function poll() {
+      if (!store.flights?.length) return
+      store.fids = deriveFromFlights(store.flights)
+      broadcast('fids', store.fids)
+      const total = Object.values(store.fids).reduce((s, a) => s + a.departures, 0)
+      console.log(`[FIDS] Derived ${total} TCA movements from ${store.flights.length} live flights`)
+    }
+    setTimeout(poll, 15_000)  // wait for first OpenSky poll
+    setInterval(poll, POLL_MS_FALLBACK)
   }
-
-  // Stagger by 2s per airport to avoid burst
-  AIRPORTS.forEach((airport, i) => {
-    setTimeout(() => {
-      pollAirport(airport)
-      setInterval(() => pollAirport(airport), POLL_MS)
-    }, i * 2_000)
-  })
 }

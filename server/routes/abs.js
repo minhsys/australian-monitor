@@ -85,8 +85,8 @@ function quarterMinus4(period) {
 
 async function fetchPopulation() {
   // ERP — Estimated Resident Population, Australia quarterly
-  // MEASURE=1, REGIONTYPE=AUS, REGION=AUS, FREQ=Q
-  const json   = await absGet('ABS,ERP_Q/1..AUS.Q?format=jsondata&detail=dataonly&startPeriod=2024-Q1')
+  // MEASURE=1 (ERP persons), SEX=3 (Persons), AGE=TOT (All ages), REGION=AUS, FREQ=Q
+  const json   = await absGet('ABS,ERP_Q/1.3.TOT.AUS.Q?format=jsondata&detail=dataonly&startPeriod=2024-Q1')
   const series = extractTimeSeries(json)
   if (!series.length) throw new Error('No ERP observations')
   const last = series[series.length - 1]

@@ -2,20 +2,14 @@ import fetch from 'node-fetch'
 
 const POLL_MS = 30 * 60 * 1000  // 30 min — AQ + SST update slowly
 
-// ── Air Quality — OpenAQ v2 (free, no auth) ─────────────────────────
-const AQ_CITIES = ['Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide']
-
-function pm25ToAqi(pm) {
-  const bp = [
-    [0, 12, 0, 50], [12.1, 35.4, 51, 100], [35.5, 55.4, 101, 150],
-    [55.5, 150.4, 151, 200], [150.5, 250.4, 201, 300], [250.5, 500, 301, 500],
-  ]
-  for (const [cLo, cHi, iLo, iHi] of bp) {
-    if (pm >= cLo && pm <= cHi)
-      return Math.round(((iHi - iLo) / (cHi - cLo)) * (pm - cLo) + iLo)
-  }
-  return 500
-}
+// ── Air Quality — Open-Meteo AQ (free, no key, batch request) ────────
+const AQ_CITIES = [
+  { name: 'Sydney',    lat: -33.87, lon: 151.21 },
+  { name: 'Melbourne', lat: -37.81, lon: 144.97 },
+  { name: 'Brisbane',  lat: -27.47, lon: 153.02 },
+  { name: 'Perth',     lat: -31.95, lon: 115.86 },
+  { name: 'Adelaide',  lat: -34.93, lon: 138.60 },
+]
 
 function aqiCategory(aqi) {
   if (aqi <= 50)  return { label: 'Good',           color: '#00e676' }
@@ -27,27 +21,25 @@ function aqiCategory(aqi) {
 }
 
 async function fetchAirQuality() {
-  const results = await Promise.allSettled(AQ_CITIES.map(async city => {
-    const url = `https://api.openaq.org/v2/latest?country=AU&city=${encodeURIComponent(city)}&parameter=pm25&limit=5`
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'AustraliaMonitor/1.0' },
-      signal: AbortSignal.timeout(8_000),
-    })
-    if (!res.ok) throw new Error(`OpenAQ HTTP ${res.status}`)
-    const json = await res.json()
-    const readings = (json.results ?? [])
-      .flatMap(r => (r.measurements ?? []).filter(m => m.parameter === 'pm25'))
-    if (!readings.length) throw new Error(`No PM2.5 for ${city}`)
-    const avg = readings.reduce((s, m) => s + m.value, 0) / readings.length
-    const aqi = pm25ToAqi(avg)
-    return { name: city, aqi, pm25: +avg.toFixed(1), ...aqiCategory(aqi) }
-  }))
+  const lats = AQ_CITIES.map(c => c.lat).join(',')
+  const lons  = AQ_CITIES.map(c => c.lon).join(',')
+  const url   = `https://air-quality-api.open-meteo.com/v1/air-quality` +
+                `?latitude=${lats}&longitude=${lons}&current=pm2_5,us_aqi&timezone=auto`
 
-  return results.map((r, i) =>
-    r.status === 'fulfilled'
-      ? r.value
-      : { name: AQ_CITIES[i], aqi: null, pm25: null, label: 'N/A', color: '#4a6080' }
-  )
+  const res  = await fetch(url, { signal: AbortSignal.timeout(10_000) })
+  if (!res.ok) throw new Error(`Open-Meteo AQ HTTP ${res.status}`)
+  const data  = await res.json()
+  const items = Array.isArray(data) ? data : [data]
+
+  return items.map((d, i) => {
+    const city = AQ_CITIES[i]
+    const aqi  = d.current?.us_aqi ?? null
+    const pm25 = d.current?.pm2_5  ?? null
+    return {
+      name: city.name, aqi, pm25: pm25 != null ? +pm25.toFixed(1) : null,
+      ...(aqi != null ? aqiCategory(aqi) : { label: 'N/A', color: '#4a6080' }),
+    }
+  })
 }
 
 // ── Fire Danger — Seasonal defaults (BOM XML too complex/unreliable) ─

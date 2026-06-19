@@ -297,6 +297,25 @@ function addClickPopup(map, layerId, getHtml) {
   map.on('mouseleave', layerId, () => { map.getCanvas().style.cursor = '' })
 }
 
+/* ── Custom map icons (white SDF shapes — tinted at runtime via icon-color) ── */
+const FLIGHT_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <path fill="white" d="M12 2 L10 8 L3 11 L3 13 L10 11.5 L10 16 L7.5 17.5 L7.5 19 L12 17.5 L16.5 19 L16.5 17.5 L14 16 L14 11.5 L21 13 L21 11 L14 8 Z"/>
+</svg>`
+
+const SHIP_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <path fill="white" d="M12 2 Q15 4 16 8 L16 17 Q16 21 12 22 Q8 21 8 17 L8 8 Q9 4 12 2 Z"/>
+  <rect x="10" y="9" width="4" height="4" rx="0.5" fill="white" opacity="0.6"/>
+</svg>`
+
+function loadSvgImage(svgStr, size = 24) {
+  return new Promise((resolve, reject) => {
+    const img = new Image(size, size)
+    img.onload  = () => resolve(img)
+    img.onerror = reject
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgStr)
+  })
+}
+
 /* ── Which toggle keys map to GL layer ids ── */
 const GL_LAYERS = {
   liveFlights:     ['flights-layer'],
@@ -331,7 +350,15 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
 
     map.addControl(new maplibregl.NavigationControl(), 'top-left')
 
-    map.on('load', () => {
+    map.on('load', async () => {
+      /* ── Register custom icons (SDF = runtime tint via icon-color) ── */
+      const [flightImg, shipImg] = await Promise.all([
+        loadSvgImage(FLIGHT_SVG, 24),
+        loadSvgImage(SHIP_SVG, 24),
+      ])
+      map.addImage('flight-icon', flightImg, { sdf: true })
+      map.addImage('ship-icon',   shipImg,   { sdf: true })
+
       /* ── GeoJSON sources ── */
       ;[
         ['flights',        flightsFC(dataRef.current.flights)],
@@ -347,26 +374,42 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
       const vis = key => LAYER_DEFAULTS[key] ? 'visible' : 'none'
 
       map.addLayer({
-        id: 'flights-layer', type: 'circle', source: 'flights',
-        layout: { visibility: vis('liveFlights') },
+        id: 'flights-layer', type: 'symbol', source: 'flights',
+        layout: {
+          visibility:                vis('liveFlights'),
+          'icon-image':              'flight-icon',
+          'icon-size':               0.7,
+          'icon-rotate':             ['get', 'heading'],
+          'icon-rotation-alignment': 'map',
+          'icon-allow-overlap':      true,
+          'icon-ignore-placement':   true,
+        },
         paint: {
-          'circle-radius': 4,
-          'circle-color':  '#00ffcc',
-          'circle-stroke-width': 1,
-          'circle-stroke-color': 'rgba(0,255,204,0.35)',
+          'icon-color':   '#00ffcc',
+          'icon-opacity': 0.95,
+          'icon-halo-color': 'rgba(0,255,204,0.25)',
+          'icon-halo-width': 2,
         },
       })
       addClickPopup(map, 'flights-layer',
         p => `<b>${p.callsign}</b><br/>Alt: ${Math.round(p.altitude)}m · ${Math.round(p.velocity)} m/s`)
 
       map.addLayer({
-        id: 'ships-layer', type: 'circle', source: 'ships',
-        layout: { visibility: vis('shipping') },
+        id: 'ships-layer', type: 'symbol', source: 'ships',
+        layout: {
+          visibility:                vis('shipping'),
+          'icon-image':              'ship-icon',
+          'icon-size':               0.65,
+          'icon-rotate':             ['get', 'heading'],
+          'icon-rotation-alignment': 'map',
+          'icon-allow-overlap':      true,
+          'icon-ignore-placement':   true,
+        },
         paint: {
-          'circle-radius': 5,
-          'circle-color':  ['case', ['>', ['get', 'speed'], 10], '#f5c842', '#00ffcc'],
-          'circle-stroke-width': 1,
-          'circle-stroke-color': 'rgba(255,255,255,0.2)',
+          'icon-color':   ['case', ['>', ['get', 'speed'], 10], '#f5c842', '#00bfff'],
+          'icon-opacity': 0.95,
+          'icon-halo-color': 'rgba(0,191,255,0.2)',
+          'icon-halo-width': 2,
         },
       })
       addClickPopup(map, 'ships-layer',

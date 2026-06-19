@@ -32,7 +32,7 @@ function parseCsv(csv) {
   }).filter(f => !isNaN(f.lat) && !isNaN(f.lon))
 }
 
-export function startFiresPoller(broadcast) {
+export function startFiresPoller(broadcast, store) {
   async function poll() {
     const key = process.env.NASA_FIRMS_KEY
     if (!key) {
@@ -45,6 +45,7 @@ export function startFiresPoller(broadcast) {
       if (!res.ok) throw new Error(`NASA FIRMS HTTP ${res.status}`)
       const csv = await res.text()
       const fires = parseCsv(csv)
+      store.fires = fires
       broadcast('fires', fires)
       console.log(`[FIRES] ${fires.length} hotspots`)
     } catch (err) {

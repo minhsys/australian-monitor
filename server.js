@@ -8,6 +8,7 @@ import { startFlightsPoller }                        from './server/routes/fligh
 import { startShipsWatcher }                         from './server/routes/ships.js'
 import { startSeismicPoller }                        from './server/routes/seismic.js'
 import { startFiresPoller }                          from './server/routes/fires.js'
+import { startFloodsPoller }                         from './server/routes/floods.js'
 import { fetchRealFinancial, startFinancialPoller }  from './server/routes/financial.js'
 import { fetchRealWeather, startWeatherPoller }       from './server/routes/weather.js'
 import { startFidsPoller }                            from './server/routes/fids.js'
@@ -46,7 +47,30 @@ const store = {
   energy:    null,
   absData:   null,
   vitals:    null,
-  feedStats: { total: 18, online: 0, totalFeeds: 400 },
+  feedStats: { total: 13, online: 0, totalFeeds: 0 },
+}
+
+function computeFeedStats() {
+  const checks = [
+    store.news?.length > 0,
+    store.financial != null,
+    store.weather != null,
+    store.flights?.length > 0,
+    store.ships && Object.keys(store.ships).length > 0,
+    store.seismic != null,
+    store.fires != null,
+    store.floods != null,
+    store.fids != null,
+    store.energy != null,
+    store.absData != null,
+    store.vitals != null,
+    store.aiBrief != null,
+  ]
+  return {
+    total:      checks.length,
+    online:     checks.filter(Boolean).length,
+    totalFeeds: store.news?.length ?? 0,
+  }
 }
 
 /* ─────────────────────────────────────────────
@@ -75,6 +99,10 @@ wss.on('connection', (ws) => {
     Object.values(store.ships).forEach(ship =>
       ws.send(JSON.stringify({ type: 'ships', payload: ship }))
     )
+  if (store.fires?.length)
+    ws.send(JSON.stringify({ type: 'fires', payload: store.fires }))
+  if (store.floods?.length)
+    ws.send(JSON.stringify({ type: 'floods', payload: store.floods }))
 })
 
 /* ─────────────────────────────────────────────
@@ -126,6 +154,14 @@ app.get('/api/flights', noCache, (_, res) => {
 
 app.get('/api/ships', noCache, (_, res) => {
   res.json(Object.values(store.ships ?? {}))
+})
+
+app.get('/api/fires', noCache, (_, res) => {
+  res.json(store.fires ?? [])
+})
+
+app.get('/api/floods', noCache, (_, res) => {
+  res.json(store.floods ?? [])
 })
 
 app.get('/api/cables', async (_, res) => {
@@ -220,7 +256,7 @@ async function runAllPollers() {
     online++
   }
 
-  store.feedStats.online = online + 9 // base sources always up
+  store.feedStats = computeFeedStats()
   broadcast('feedStats', store.feedStats)
   console.log(`[POLL] Cycle complete — ${online}/3 pollers OK`)
 }
@@ -277,14 +313,15 @@ async function bootstrap() {
     console.warn('[BOOT] Weather load failed:', e.message)
   }
 
-  store.feedStats.online = 12
+  store.feedStats = computeFeedStats()
   startPolling()
 
   // Phase 2: live map data pollers
   startFlightsPoller(broadcast, store)
   startShipsWatcher(broadcast, store)
   startSeismicPoller(broadcast)
-  startFiresPoller(broadcast)
+  startFiresPoller(broadcast, store)
+  startFloodsPoller(broadcast, store)
 
   // Phase 3: real financial poller
   startFinancialPoller(broadcast, store)

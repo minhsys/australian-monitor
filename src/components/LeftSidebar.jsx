@@ -2,24 +2,31 @@ import { useState, useEffect } from 'react'
 import { RefreshCw, Cloud, Wind, Droplets, Tv, Plus } from 'lucide-react'
 
 const PRESET_CHANNELS = [
-  { id: 'au-live', name: 'AU Live',  url: 'https://www.youtube.com/embed/vOTiJkg1voo?autoplay=1' },
-  { id: 'sky-au',  name: 'Sky AU',   url: 'https://www.youtube.com/embed/RTL8K1Tyjgw?autoplay=1' },
-  { id: 'cnn',     name: 'CNN',      url: 'https://www.youtube.com/embed/GotlA1KKWoo?autoplay=1' },
-  { id: 'abc-au',  name: 'ABC News', url: 'https://www.youtube.com/embed/w84UV-XXBtQ?autoplay=1' },
+  { id: 'au-live', name: 'AU Live',  url: 'https://www.youtube.com/embed/vOTiJkg1voo?autoplay=1&mute=1' },
+  { id: 'sky-au',  name: 'Sky AU',   url: 'https://www.youtube.com/embed/RTL8K1Tyjgw?autoplay=1&mute=1' },
+  { id: 'cnn',     name: 'CNN',      url: 'https://www.youtube.com/embed/GotlA1KKWoo?autoplay=1&mute=1' },
+  { id: 'abc-au',  name: 'ABC News', url: 'https://www.youtube.com/embed/w84UV-XXBtQ?autoplay=1&mute=1' },
 ]
 
 function toEmbedUrl(raw) {
   if (!raw) return ''
   const m = raw.match(/[?&]v=([a-zA-Z0-9_-]{11})/) ?? raw.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/)
-  return m ? `https://www.youtube.com/embed/${m[1]}?autoplay=1` : raw.trim()
+  return m ? `https://www.youtube.com/embed/${m[1]}?autoplay=1&mute=1` : raw.trim()
 }
 
 export default function LeftSidebar({ feedStats, onForcePoll, weather: weatherProp }) {
   const [polling,    setPolling]    = useState(false)
   const [weather,    setWeather]    = useState(weatherProp ?? [])
   const [channels, setChannels] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('tv_channels')) ?? PRESET_CHANNELS }
-    catch { return PRESET_CHANNELS }
+    try {
+      const saved = JSON.parse(localStorage.getItem('tv_channels'))
+      if (!saved) return PRESET_CHANNELS
+      // Ensure all URLs are muted
+      return saved.map(ch => ({
+        ...ch,
+        url: ch.url.includes('mute=1') ? ch.url : ch.url.replace(/([?&]autoplay=1)/, '$1&mute=1'),
+      }))
+    } catch { return PRESET_CHANNELS }
   })
   const [activeId, setActiveId] = useState(
     () => localStorage.getItem('tv_active_id') ?? PRESET_CHANNELS[0].id

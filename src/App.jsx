@@ -13,6 +13,7 @@ export default function App() {
   const [ships,      setShips]      = useState({})
   const [seismic,    setSeismic]    = useState([])
   const [fires,      setFires]      = useState([])
+  const [floods,     setFloods]     = useState([])
   const [weather,    setWeather]    = useState(null)
   const [fids,       setFids]       = useState({})
   const [aiBrief,    setAiBrief]    = useState(null)
@@ -36,6 +37,7 @@ export default function App() {
           if (msg.type === 'flights')   setFlights(msg.payload)
           if (msg.type === 'seismic')   setSeismic(msg.payload)
           if (msg.type === 'fires')     setFires(msg.payload)
+          if (msg.type === 'floods')    setFloods(msg.payload)
           if (msg.type === 'ships') {
             const ship = msg.payload
             setShips(prev => ({ ...prev, [ship.mmsi]: ship }))
@@ -66,7 +68,7 @@ export default function App() {
   useEffect(() => {
     const poll = async () => {
       try {
-        const [newsRes, finRes, weatherRes, energyRes, absRes, vitalsRes, flightsRes, shipsRes] = await Promise.allSettled([
+        const [newsRes, finRes, weatherRes, energyRes, absRes, vitalsRes, flightsRes, shipsRes, firesRes, floodsRes] = await Promise.allSettled([
           fetch('/api/news').then(r => r.json()),
           fetch('/api/financial').then(r => r.json()),
           fetch('/api/weather').then(r => r.json()),
@@ -75,33 +77,23 @@ export default function App() {
           fetch('/api/vitals').then(r => r.json()),
           fetch('/api/flights').then(r => r.json()),
           fetch('/api/ships').then(r => r.json()),
+          fetch('/api/fires').then(r => r.json()),
+          fetch('/api/floods').then(r => r.json()),
         ])
-        if (newsRes.status === 'fulfilled' && newsRes.value?.items) {
-          setNewsItems(newsRes.value.items)
-        }
-        if (finRes.status === 'fulfilled') {
-          setFinancial(finRes.value)
-        }
-        if (weatherRes.status === 'fulfilled' && Array.isArray(weatherRes.value)) {
-          setWeather(weatherRes.value)
-        }
-        if (energyRes.status === 'fulfilled' && energyRes.value?.total_mw) {
-          setEnergy(energyRes.value)
-        }
-        if (absRes.status === 'fulfilled' && absRes.value?.unemployment) {
-          setAbsData(absRes.value)
-        }
-        if (vitalsRes.status === 'fulfilled' && vitalsRes.value?.airQuality) {
-          setVitals(vitalsRes.value)
-        }
-        if (flightsRes.status === 'fulfilled' && Array.isArray(flightsRes.value)) {
-          setFlights(flightsRes.value)
-        }
+        if (newsRes.status === 'fulfilled' && newsRes.value?.items) setNewsItems(newsRes.value.items)
+        if (finRes.status === 'fulfilled') setFinancial(finRes.value)
+        if (weatherRes.status === 'fulfilled' && Array.isArray(weatherRes.value)) setWeather(weatherRes.value)
+        if (energyRes.status === 'fulfilled' && energyRes.value?.total_mw) setEnergy(energyRes.value)
+        if (absRes.status === 'fulfilled' && absRes.value?.unemployment) setAbsData(absRes.value)
+        if (vitalsRes.status === 'fulfilled' && vitalsRes.value?.airQuality) setVitals(vitalsRes.value)
+        if (flightsRes.status === 'fulfilled' && Array.isArray(flightsRes.value)) setFlights(flightsRes.value)
         if (shipsRes.status === 'fulfilled' && Array.isArray(shipsRes.value)) {
           const shipMap = {}
           shipsRes.value.forEach(s => { shipMap[s.mmsi] = s })
           setShips(shipMap)
         }
+        if (firesRes.status === 'fulfilled' && Array.isArray(firesRes.value)) setFires(firesRes.value)
+        if (floodsRes.status === 'fulfilled' && Array.isArray(floodsRes.value)) setFloods(floodsRes.value)
       } catch { /* server not up yet in pure client dev mode — use mock data */ }
     }
 
@@ -126,6 +118,7 @@ export default function App() {
           ships={Object.values(ships)}
           seismic={seismic}
           fires={fires}
+          floods={floods}
           fids={fids}
           aiBrief={aiBrief}
         />

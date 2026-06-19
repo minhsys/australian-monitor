@@ -136,7 +136,6 @@ const TABS = [
 ]
 
 const LAYER_DEFAULTS = {
-  intelligenceHubs: true,
   liveFlights:      true,
   trains:           false,
   shipping:         true,
@@ -145,10 +144,9 @@ const LAYER_DEFAULTS = {
   airports:         false,
   seaports:         false,
   infrastructure:   false,
-  militaryBases:    false,
-  financeLayer:     false,
   submarineCables:  false,
   fires:            true,
+  floods:           true,
 }
 
 /* ── MapLibre style: CartoDB Dark raster, no API key required ── */
@@ -196,6 +194,12 @@ const firesFC = fires => toFC((fires || []).map(f => ({
   type: 'Feature',
   geometry: { type: 'Point', coordinates: [f.lon, f.lat] },
   properties: { brightness: f.brightness ?? 300, confidence: f.confidence || '' },
+})))
+
+const floodsFC = floods => toFC((floods || []).map(f => ({
+  type: 'Feature',
+  geometry: { type: 'Point', coordinates: [f.lon, f.lat] },
+  properties: { title: f.title || '', type: f.type || '', severity: f.severity || 'minor', state: f.state || '' },
 })))
 
 const railsFC = () => toFC(RAIL_ROUTES.map(r => ({
@@ -307,6 +311,7 @@ const SHIP_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
   <rect x="10" y="9" width="4" height="4" rx="0.5" fill="white" opacity="0.6"/>
 </svg>`
 
+
 function loadSvgImage(svgStr, size = 24) {
   return new Promise((resolve, reject) => {
     const img = new Image(size, size)
@@ -322,15 +327,16 @@ const GL_LAYERS = {
   shipping:        ['ships-layer'],
   seismic:         ['seismic-layer'],
   fires:           ['fires-layer'],
+  floods:          ['floods-layer'],
   trains:          ['trains-layer'],
   submarineCables: ['cables-layer', 'cable-landings-layer'],
 }
 
 /* ── Component ── */
-export default function MapCenter({ newsItems, flights, ships, seismic, fires, fids, aiBrief }) {
+export default function MapCenter({ newsItems, flights, ships, seismic, fires, floods, fids, aiBrief }) {
   const mapRef     = useRef(null)
   const markersRef = useRef({})
-  const dataRef    = useRef({ flights: [], ships: [], seismic: [], fires: [] })
+  const dataRef    = useRef({ flights: [], ships: [], seismic: [], fires: [], floods: [] })
   const cablesRef  = useRef(null)
 
   const [activeTab, setActiveTab] = useState('news')
@@ -352,12 +358,16 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
 
     map.on('load', async () => {
       /* ── Register custom icons (SDF = runtime tint via icon-color) ── */
-      const [flightImg, shipImg] = await Promise.all([
-        loadSvgImage(FLIGHT_SVG, 24),
-        loadSvgImage(SHIP_SVG, 24),
-      ])
-      map.addImage('flight-icon', flightImg, { sdf: true })
-      map.addImage('ship-icon',   shipImg,   { sdf: true })
+      try {
+        const [flightImg, shipImg] = await Promise.all([
+          loadSvgImage(FLIGHT_SVG, 24),
+          loadSvgImage(SHIP_SVG, 24),
+        ])
+        map.addImage('flight-icon', flightImg, { sdf: true })
+        map.addImage('ship-icon',   shipImg,   { sdf: true })
+      } catch (err) {
+        console.warn('[MAP] SVG icon load failed:', err)
+      }
 
       /* ── GeoJSON sources ── */
       ;[
@@ -365,6 +375,7 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
         ['ships',          shipsFC(dataRef.current.ships)],
         ['seismic',        seismicFC(dataRef.current.seismic)],
         ['fires',          firesFC(dataRef.current.fires)],
+        ['floods',         floodsFC(dataRef.current.floods)],
         ['rails',          railsFC()],
         ['cables',         cablesRef.current?.cables   ?? EMPTY_FC],
         ['cable-landings', cablesRef.current?.landings ?? EMPTY_FC],
@@ -433,15 +444,29 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
         id: 'fires-layer', type: 'circle', source: 'fires',
         layout: { visibility: vis('fires') },
         paint: {
-          'circle-radius':  ['case', ['>', ['get', 'brightness'], 350], 7, 5],
-          'circle-color':   '#ff4400',
+          'circle-radius':       ['case', ['>', ['get', 'brightness'], 350], 7, 5],
+          'circle-color':        ['case', ['>', ['get', 'brightness'], 380], '#ff2200', ['>', ['get', 'brightness'], 340], '#ff6600', '#ffaa00'],
           'circle-stroke-width': 1,
           'circle-stroke-color': '#ff8800',
-          'circle-opacity': 0.85,
+          'circle-opacity':      0.85,
         },
       })
       addClickPopup(map, 'fires-layer',
         p => `🔥 Hotspot<br/>Brightness: ${p.brightness}<br/>Confidence: ${p.confidence}`)
+
+      map.addLayer({
+        id: 'floods-layer', type: 'circle', source: 'floods',
+        layout: { visibility: vis('floods') },
+        paint: {
+          'circle-radius':       8,
+          'circle-color':        ['case', ['==', ['get', 'type'], 'flood_warning'], '#ff4488', '#00bfff'],
+          'circle-stroke-width': 2,
+          'circle-stroke-color': 'rgba(255,255,255,0.4)',
+          'circle-opacity':      0.85,
+        },
+      })
+      addClickPopup(map, 'floods-layer',
+        p => `🌊 <b>${p.title}</b><br/>Type: ${p.type.replace(/_/g, ' ')}<br/>State: ${p.state}`)
 
       map.addLayer({
         id: 'trains-layer', type: 'line', source: 'rails',
@@ -474,13 +499,10 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
 
       /* ── HTML markers for static overlays ── */
       markersRef.current = {
-        newsClusters:     createNewsClusters(map),
-        intelligenceHubs: setMarkersVisible(createIntelHubs(map),      LAYER_DEFAULTS.intelligenceHubs),
-        airports:         setMarkersVisible(createAirportMarkers(map),  LAYER_DEFAULTS.airports),
-        seaports:         setMarkersVisible(createSeaportMarkers(map),  LAYER_DEFAULTS.seaports),
-        militaryBases:    setMarkersVisible(createMilitaryMarkers(map), LAYER_DEFAULTS.militaryBases),
-        infrastructure:   setMarkersVisible(createInfraMarkers(map),    LAYER_DEFAULTS.infrastructure),
-        financeLayer:     setMarkersVisible(createFinanceMarkers(map),  LAYER_DEFAULTS.financeLayer),
+        newsClusters:  createNewsClusters(map),
+        airports:      setMarkersVisible(createAirportMarkers(map),  LAYER_DEFAULTS.airports),
+        seaports:      setMarkersVisible(createSeaportMarkers(map),  LAYER_DEFAULTS.seaports),
+        infrastructure: setMarkersVisible(createInfraMarkers(map),   LAYER_DEFAULTS.infrastructure),
       }
     })
 
@@ -522,6 +544,11 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
     dataRef.current.fires = fires || []
     mapRef.current?.getSource('fires')?.setData(firesFC(fires))
   }, [fires])
+
+  useEffect(() => {
+    dataRef.current.floods = floods || []
+    mapRef.current?.getSource('floods')?.setData(floodsFC(floods))
+  }, [floods])
 
   /* ── Layer toggle ── */
   const toggleLayer = key => {

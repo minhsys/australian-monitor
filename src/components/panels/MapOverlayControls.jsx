@@ -1,19 +1,16 @@
 import { Layers } from 'lucide-react'
 
 const OVERLAY_ITEMS = [
-  { key: 'intelligenceHubs',  icon: '🔵', label: 'Intelligence Hubs' },
   { key: 'liveFlights',       icon: '✈',  label: 'Live Flights (Realtime)' },
-  { key: 'trains',            icon: '🚂', label: 'Rail (Simulated)' },
   { key: 'shipping',          icon: '🚢', label: 'Shipping Traffic (AIS)' },
   { key: 'seismic',           icon: '📡', label: 'Seismic (GA + USGS)' },
-  { key: 'cameras',           icon: '📷', label: 'Traffic Cameras' },
   { key: 'airports',          icon: '🛫', label: 'Civilian Airports' },
   { key: 'seaports',          icon: '⚓', label: 'International Seaports' },
   { key: 'infrastructure',    icon: '⚡', label: 'National Infrastructure' },
-  { key: 'militaryBases',     icon: '🛡', label: 'ADF Bases & Joint Facilities' },
-  { key: 'financeLayer',      icon: '💹', label: 'Finance Layer' },
+  { key: 'trains',            icon: '🚂', label: 'Rail Routes' },
   { key: 'submarineCables',   icon: '🔌', label: 'Submarine Cables' },
   { key: 'fires',             icon: '🔥', label: 'Bushfire Hotspots (NASA)' },
+  { key: 'floods',            icon: '🌊', label: 'Flood Warnings (BOM)' },
 ]
 
 export default function MapOverlayControls({ layers, onToggle }) {

@@ -61,14 +61,20 @@ function broadcast(type, payload) {
 
 wss.on('connection', (ws) => {
   console.log('[WS] Client connected')
-  if (store.news.length)  ws.send(JSON.stringify({ type: 'news_batch', payload: store.news.slice(0, 20) }))
-  if (store.financial)    ws.send(JSON.stringify({ type: 'financial',  payload: store.financial }))
-  if (store.feedStats)    ws.send(JSON.stringify({ type: 'feedStats',  payload: store.feedStats }))
-  if (store.weather)      ws.send(JSON.stringify({ type: 'weather',    payload: store.weather }))
-  if (store.aiBrief)      ws.send(JSON.stringify({ type: 'ai_brief',   payload: store.aiBrief }))
-  if (store.energy)       ws.send(JSON.stringify({ type: 'energy',     payload: store.energy }))
-  if (store.absData)      ws.send(JSON.stringify({ type: 'abs_data',   payload: store.absData }))
-  if (store.vitals)       ws.send(JSON.stringify({ type: 'vitals',     payload: store.vitals }))
+  if (store.news.length)   ws.send(JSON.stringify({ type: 'news_batch', payload: store.news.slice(0, 20) }))
+  if (store.financial)     ws.send(JSON.stringify({ type: 'financial',  payload: store.financial }))
+  if (store.feedStats)     ws.send(JSON.stringify({ type: 'feedStats',  payload: store.feedStats }))
+  if (store.weather)       ws.send(JSON.stringify({ type: 'weather',    payload: store.weather }))
+  if (store.aiBrief)       ws.send(JSON.stringify({ type: 'ai_brief',   payload: store.aiBrief }))
+  if (store.energy)        ws.send(JSON.stringify({ type: 'energy',     payload: store.energy }))
+  if (store.absData)       ws.send(JSON.stringify({ type: 'abs_data',   payload: store.absData }))
+  if (store.vitals)        ws.send(JSON.stringify({ type: 'vitals',     payload: store.vitals }))
+  if (store.flights?.length)
+    ws.send(JSON.stringify({ type: 'flights', payload: store.flights }))
+  if (store.ships && Object.keys(store.ships).length)
+    Object.values(store.ships).forEach(ship =>
+      ws.send(JSON.stringify({ type: 'ships', payload: ship }))
+    )
 })
 
 /* ─────────────────────────────────────────────
@@ -112,6 +118,14 @@ app.get('/api/abs', noCache, (_, res) => {
 
 app.get('/api/vitals', noCache, (_, res) => {
   res.json(store.vitals ?? { source: 'unavailable' })
+})
+
+app.get('/api/flights', noCache, (_, res) => {
+  res.json(store.flights ?? [])
+})
+
+app.get('/api/ships', noCache, (_, res) => {
+  res.json(Object.values(store.ships ?? {}))
 })
 
 app.get('/api/cables', async (_, res) => {
@@ -268,7 +282,7 @@ async function bootstrap() {
 
   // Phase 2: live map data pollers
   startFlightsPoller(broadcast, store)
-  startShipsWatcher(broadcast)
+  startShipsWatcher(broadcast, store)
   startSeismicPoller(broadcast)
   startFiresPoller(broadcast)
 

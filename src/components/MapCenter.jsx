@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
+import maplibregl from 'maplibre-gl'
+import 'maplibre-gl/dist/maplibre-gl.css'
 import MapOverlayControls from './panels/MapOverlayControls.jsx'
 import NewsPanel from './panels/NewsPanel.jsx'
 
@@ -107,17 +107,17 @@ const NATIONAL_INFRA = [
   { name: 'Kogan Creek Power Stn',    lat: -26.72, lon: 150.52, type: 'COAL' },
 ]
 
-const INFRA_ICON = { HYDRO:'💧', COAL:'🏭', NUCLEAR:'☢', MINING:'⛏', LNG:'🛢', GRID:'⚡', WIND:'🌀' }
+const INFRA_ICON = { HYDRO: '💧', COAL: '🏭', NUCLEAR: '☢', MINING: '⛏', LNG: '🛢', GRID: '⚡', WIND: '🌀' }
 
 const RAIL_ROUTES = [
   { name: 'East Coast Main Line', color: '#4caf50',
-    points: [[-27.47,153.02],[-33.87,151.21],[-37.81,144.97]] },
+    points: [[-27.47, 153.02], [-33.87, 151.21], [-37.81, 144.97]] },
   { name: 'The Ghan',            color: '#ff8f00',
-    points: [[-34.93,138.60],[-23.70,133.88],[-12.46,130.84]] },
+    points: [[-34.93, 138.60], [-23.70, 133.88], [-12.46, 130.84]] },
   { name: 'Indian Pacific',      color: '#9c27b0',
-    points: [[-31.95,115.86],[-30.75,121.47],[-31.51,133.03],[-34.93,138.60],[-33.87,151.21]] },
+    points: [[-31.95, 115.86], [-30.75, 121.47], [-31.51, 133.03], [-34.93, 138.60], [-33.87, 151.21]] },
   { name: 'Adelaide–Broken Hill', color: '#00bcd4',
-    points: [[-34.93,138.60],[-31.97,141.46],[-33.87,151.21]] },
+    points: [[-34.93, 138.60], [-31.97, 141.46], [-33.87, 151.21]] },
 ]
 
 const FINANCE_HUBS = [
@@ -151,355 +151,351 @@ const LAYER_DEFAULTS = {
   fires:            true,
 }
 
-/* ── Icon builders ── */
-function flightIcon(heading) {
-  return L.divIcon({
-    className: '',
-    html: `<div class="flight-marker" style="transform:rotate(${heading}deg)">✈</div>`,
-    iconSize: [16, 16],
-    iconAnchor: [8, 8],
+/* ── MapLibre style: CartoDB Dark raster, no API key required ── */
+const MAP_STYLE = {
+  version: 8,
+  sources: {
+    carto: {
+      type: 'raster',
+      tiles: [
+        'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+        'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+        'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+      ],
+      tileSize: 512,
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OSM</a> © <a href="https://carto.com/">CARTO</a>',
+    },
+  },
+  layers: [{ id: 'carto-dark', type: 'raster', source: 'carto' }],
+}
+
+/* ── GeoJSON converters (MapLibre coords are [lng, lat]) ── */
+const EMPTY_FC = Object.freeze({ type: 'FeatureCollection', features: [] })
+
+const toFC = features => ({ type: 'FeatureCollection', features })
+
+const flightsFC = flights => toFC((flights || []).map(f => ({
+  type: 'Feature',
+  geometry: { type: 'Point', coordinates: [f.lon, f.lat] },
+  properties: { callsign: f.callsign || f.icao24 || '?', heading: f.heading ?? 0, altitude: f.altitude ?? 0, velocity: f.velocity ?? 0 },
+})))
+
+const shipsFC = ships => toFC((ships || []).map(s => ({
+  type: 'Feature',
+  geometry: { type: 'Point', coordinates: [s.lon, s.lat] },
+  properties: { name: s.name || 'Unknown', mmsi: s.mmsi, speed: s.speed ?? 0 },
+})))
+
+const seismicFC = events => toFC((events || []).map(e => ({
+  type: 'Feature',
+  geometry: { type: 'Point', coordinates: [e.lon, e.lat] },
+  properties: { magnitude: e.magnitude ?? 0, place: e.place || '', depth: e.depth ?? 0 },
+})))
+
+const firesFC = fires => toFC((fires || []).map(f => ({
+  type: 'Feature',
+  geometry: { type: 'Point', coordinates: [f.lon, f.lat] },
+  properties: { brightness: f.brightness ?? 300, confidence: f.confidence || '' },
+})))
+
+const railsFC = () => toFC(RAIL_ROUTES.map(r => ({
+  type: 'Feature',
+  geometry: { type: 'LineString', coordinates: r.points.map(([lat, lon]) => [lon, lat]) },
+  properties: { name: r.name, color: r.color },
+})))
+
+/* ── HTML marker helpers ── */
+function spawnMarkers(map, items, toLngLat, toInnerHtml, toPopupHtml) {
+  return items.map(item => {
+    const el = document.createElement('div')
+    el.innerHTML = toInnerHtml(item)
+    const popup = new maplibregl.Popup({ offset: 12, maxWidth: '220px', className: 'au-popup' })
+      .setHTML(toPopupHtml(item))
+    return new maplibregl.Marker({ element: el })
+      .setLngLat(toLngLat(item))
+      .setPopup(popup)
+      .addTo(map)
   })
 }
 
-function shipIcon(speed) {
-  const col = speed > 10 ? '#f5c842' : '#00ffcc'
-  return L.divIcon({
-    className: '',
-    html: `<div class="ship-marker" style="background:${col};border-color:${col}"></div>`,
-    iconSize: [8, 8],
-    iconAnchor: [4, 4],
-  })
+function setMarkersVisible(markers, visible) {
+  markers.forEach(m => { m.getElement().style.display = visible ? '' : 'none' })
+  return markers
 }
 
-function seismicIcon(magnitude) {
-  const size = Math.max(10, Math.min(36, magnitude * 8))
-  const opacity = Math.min(0.7, 0.2 + magnitude * 0.1)
-  return L.divIcon({
-    className: '',
-    html: `<div class="seismic-marker" style="width:${size}px;height:${size}px;opacity:${opacity}"></div>`,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-  })
+const createNewsClusters = map => spawnMarkers(
+  map, NEWS_CLUSTERS,
+  c => [c.lon, c.lat],
+  c => {
+    const size = c.count > 30 ? 32 : c.count > 10 ? 26 : 20
+    return `<div class="news-cluster-marker ${c.level}" style="width:${size}px;height:${size}px;font-size:${size < 26 ? 9 : 11}px">${c.count}</div>`
+  },
+  c => `<b>${c.name}</b><br/>${c.count} signals`,
+)
+
+const createIntelHubs = map => spawnMarkers(
+  map, INTEL_HUBS,
+  h => [h.lon, h.lat],
+  h => {
+    const col = HUB_COLOURS[h.type] || '#888'
+    return `<div style="width:10px;height:10px;border-radius:50%;background:${col};border:1.5px solid rgba(255,255,255,0.4);box-shadow:0 0 8px ${col}"></div>`
+  },
+  h => `<b>${h.name}</b> [${h.type}]`,
+)
+
+const createAirportMarkers = map => spawnMarkers(
+  map, CIVILIAN_AIRPORTS,
+  a => [a.lon, a.lat],
+  () => `<div style="color:#00a8ff;font-size:14px;filter:drop-shadow(0 0 5px #00a8ff)">✈</div>`,
+  a => `<b>${a.iata}</b> — ${a.name}`,
+)
+
+const createSeaportMarkers = map => spawnMarkers(
+  map, MAJOR_SEAPORTS,
+  s => [s.lon, s.lat],
+  () => `<div style="color:#00ffcc;font-size:14px;filter:drop-shadow(0 0 5px #00ffcc)">⚓</div>`,
+  s => `<b>${s.name}</b> [${s.type}]`,
+)
+
+const createMilitaryMarkers = map => spawnMarkers(
+  map, ADF_BASES,
+  b => [b.lon, b.lat],
+  b => {
+    const col = HUB_COLOURS[b.type] || '#888'
+    return `<div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:10px solid ${col};filter:drop-shadow(0 0 4px ${col})"></div>`
+  },
+  b => `<b>${b.name}</b> [${b.type}]`,
+)
+
+const createInfraMarkers = map => spawnMarkers(
+  map, NATIONAL_INFRA,
+  i => [i.lon, i.lat],
+  i => `<div style="font-size:14px;filter:drop-shadow(0 0 5px rgba(255,200,0,0.9))">${INFRA_ICON[i.type] || '⚡'}</div>`,
+  i => `<b>${i.name}</b> [${i.type}]`,
+)
+
+const createFinanceMarkers = map => {
+  const ICON = { EXCHANGE: '📈', BANK: '🏦', MINING: '⛏', ENERGY: '🛢', FINANCE: '💹' }
+  return spawnMarkers(
+    map, FINANCE_HUBS,
+    f => [f.lon, f.lat],
+    f => `<div style="font-size:13px;filter:drop-shadow(0 0 4px rgba(100,255,100,0.8))">${ICON[f.type] || '💹'}</div>`,
+    f => `<b>${f.name}</b>`,
+  )
 }
 
-function fireIcon(brightness) {
-  const size = brightness > 350 ? 14 : 10
-  return L.divIcon({
-    className: '',
-    html: `<div class="fire-marker" style="font-size:${size}px">🔥</div>`,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
+/* ── GL layer click popup helper ── */
+function addClickPopup(map, layerId, getHtml) {
+  map.on('click', layerId, e => {
+    if (!e.features.length) return
+    new maplibregl.Popup({ maxWidth: '240px', className: 'au-popup' })
+      .setLngLat(e.lngLat)
+      .setHTML(getHtml(e.features[0].properties))
+      .addTo(map)
   })
+  map.on('mouseenter', layerId, () => { map.getCanvas().style.cursor = 'pointer' })
+  map.on('mouseleave', layerId, () => { map.getCanvas().style.cursor = '' })
 }
 
-/* ── Layer drawing helpers ── */
-function drawNewsClusters(group) {
-  NEWS_CLUSTERS.forEach(city => {
-    const size = city.count > 30 ? 32 : city.count > 10 ? 26 : 20
-    const icon = L.divIcon({
-      className: '',
-      html: `<div class="news-cluster-marker ${city.level}"
-                  style="width:${size}px;height:${size}px;font-size:${size < 26 ? 9 : 11}px">
-                ${city.count}
-             </div>`,
-      iconSize:   [size, size],
-      iconAnchor: [size / 2, size / 2],
-    })
-    L.marker([city.lat, city.lon], { icon })
-      .bindTooltip(`<b>${city.name}</b><br/>${city.count} signals`, {
-        className: '', direction: 'top', offset: [0, -size / 2],
-      })
-      .addTo(group)
-  })
-}
-
-function drawIntelHubs(group) {
-  INTEL_HUBS.forEach(hub => {
-    const col = HUB_COLOURS[hub.type] || '#888'
-    const icon = L.divIcon({
-      className: '',
-      html: `<div style="
-        width:10px;height:10px;border-radius:50%;
-        background:${col};border:1.5px solid rgba(255,255,255,0.4);
-        box-shadow:0 0 8px ${col}">
-      </div>`,
-      iconSize:   [10, 10],
-      iconAnchor: [5, 5],
-    })
-    L.marker([hub.lat, hub.lon], { icon })
-      .bindTooltip(`<b>${hub.name}</b> [${hub.type}]`, { direction: 'top', offset: [0, -8] })
-      .addTo(group)
-  })
-}
-
-function redrawFlights(group, flights) {
-  group.clearLayers()
-  flights.forEach(f => {
-    L.marker([f.lat, f.lon], { icon: flightIcon(f.heading) })
-      .bindTooltip(
-        `<b>${f.callsign || f.icao24}</b><br/>Alt: ${Math.round(f.altitude ?? 0)}m · ${Math.round(f.velocity ?? 0)} m/s`,
-        { direction: 'top', offset: [0, -10] }
-      )
-      .addTo(group)
-  })
-}
-
-function redrawShips(group, ships) {
-  group.clearLayers()
-  ships.forEach(s => {
-    L.marker([s.lat, s.lon], { icon: shipIcon(s.speed) })
-      .bindTooltip(
-        `<b>${s.name}</b><br/>MMSI: ${s.mmsi} · ${s.speed?.toFixed(1)} kn`,
-        { direction: 'top', offset: [0, -8] }
-      )
-      .addTo(group)
-  })
-}
-
-function redrawSeismic(group, events) {
-  group.clearLayers()
-  events.forEach(e => {
-    L.marker([e.lat, e.lon], { icon: seismicIcon(e.magnitude) })
-      .bindTooltip(
-        `<b>M${e.magnitude?.toFixed(1)}</b><br/>${e.place}<br/>Depth: ${e.depth}km`,
-        { direction: 'top', offset: [0, -8] }
-      )
-      .addTo(group)
-  })
-}
-
-function redrawFires(group, fires) {
-  group.clearLayers()
-  fires.forEach(f => {
-    L.marker([f.lat, f.lon], { icon: fireIcon(f.brightness) })
-      .bindTooltip(
-        `🔥 Hotspot<br/>Brightness: ${f.brightness}<br/>Confidence: ${f.confidence}`,
-        { direction: 'top', offset: [0, -8] }
-      )
-      .addTo(group)
-  })
-}
-
-function drawAirports(group) {
-  CIVILIAN_AIRPORTS.forEach(ap => {
-    const icon = L.divIcon({
-      className: '',
-      html: `<div style="color:#00a8ff;font-size:14px;filter:drop-shadow(0 0 5px #00a8ff)">✈</div>`,
-      iconSize: [14, 14], iconAnchor: [7, 7],
-    })
-    L.marker([ap.lat, ap.lon], { icon })
-      .bindTooltip(`<b>${ap.iata}</b> — ${ap.name}`, { direction: 'top', offset: [0, -8] })
-      .addTo(group)
-  })
-}
-
-function drawSeaports(group) {
-  MAJOR_SEAPORTS.forEach(sp => {
-    const icon = L.divIcon({
-      className: '',
-      html: `<div style="color:#00ffcc;font-size:14px;filter:drop-shadow(0 0 5px #00ffcc)">⚓</div>`,
-      iconSize: [14, 14], iconAnchor: [7, 7],
-    })
-    L.marker([sp.lat, sp.lon], { icon })
-      .bindTooltip(`<b>${sp.name}</b> [${sp.type}]`, { direction: 'top', offset: [0, -8] })
-      .addTo(group)
-  })
-}
-
-function drawMilitaryBases(group) {
-  ADF_BASES.forEach(base => {
-    const col = HUB_COLOURS[base.type] || '#888'
-    const icon = L.divIcon({
-      className: '',
-      html: `<div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:10px solid ${col};filter:drop-shadow(0 0 4px ${col})"></div>`,
-      iconSize: [12, 10], iconAnchor: [6, 10],
-    })
-    L.marker([base.lat, base.lon], { icon })
-      .bindTooltip(`<b>${base.name}</b> [${base.type}]`, { direction: 'top', offset: [0, -10] })
-      .addTo(group)
-  })
-}
-
-function drawInfrastructure(group) {
-  NATIONAL_INFRA.forEach(item => {
-    const emoji = INFRA_ICON[item.type] || '⚡'
-    const icon = L.divIcon({
-      className: '',
-      html: `<div style="font-size:14px;filter:drop-shadow(0 0 5px rgba(255,200,0,0.9))">${emoji}</div>`,
-      iconSize: [16, 16], iconAnchor: [8, 8],
-    })
-    L.marker([item.lat, item.lon], { icon })
-      .bindTooltip(`<b>${item.name}</b> [${item.type}]`, { direction: 'top', offset: [0, -8] })
-      .addTo(group)
-  })
-}
-
-function drawRailRoutes(group) {
-  RAIL_ROUTES.forEach(route => {
-    L.polyline(route.points, {
-      color: route.color, weight: 2, opacity: 0.7, dashArray: '4 4',
-    })
-      .bindTooltip(`<b>${route.name}</b>`, { direction: 'center', sticky: true })
-      .addTo(group)
-  })
-}
-
-function drawFinanceHubs(group) {
-  const typeIcon = { EXCHANGE: '📈', BANK: '🏦', MINING: '⛏', ENERGY: '🛢', FINANCE: '💹' }
-  FINANCE_HUBS.forEach(hub => {
-    const icon = L.divIcon({
-      className: '',
-      html: `<div style="font-size:13px;filter:drop-shadow(0 0 4px rgba(100,255,100,0.8))">${typeIcon[hub.type] || '💹'}</div>`,
-      iconSize: [14, 14], iconAnchor: [7, 7],
-    })
-    L.marker([hub.lat, hub.lon], { icon })
-      .bindTooltip(`<b>${hub.name}</b>`, { direction: 'top', offset: [0, -8] })
-      .addTo(group)
-  })
-}
-
-function drawCables(group, cablesData) {
-  if (!cablesData?.cables?.features) return
-  cablesData.cables.features.forEach(f => {
-    try {
-      const coords = f.geometry?.type === 'MultiLineString'
-        ? f.geometry.coordinates.flat(1)
-        : f.geometry?.coordinates ?? []
-      if (coords.length < 2) return
-      const latlngs = coords.map(([lon, lat]) => [lat, lon])
-      L.polyline(latlngs, { color: '#ff6b35', weight: 1.5, opacity: 0.6 })
-        .bindTooltip(`<b>${f.properties?.name ?? 'Submarine Cable'}</b>`, { sticky: true })
-        .addTo(group)
-    } catch { /* skip malformed feature */ }
-  })
-  cablesData.landings?.features?.forEach(f => {
-    try {
-      const [lon, lat] = f.geometry.coordinates
-      const icon = L.divIcon({
-        className: '',
-        html: `<div style="width:6px;height:6px;background:#ff6b35;border-radius:50%;border:1px solid #fff;box-shadow:0 0 5px #ff6b35"></div>`,
-        iconSize: [6, 6], iconAnchor: [3, 3],
-      })
-      L.marker([lat, lon], { icon })
-        .bindTooltip(f.properties?.name ?? 'Landing Point', { direction: 'top', offset: [0, -5] })
-        .addTo(group)
-    } catch { /* skip */ }
-  })
+/* ── Which toggle keys map to GL layer ids ── */
+const GL_LAYERS = {
+  liveFlights:     ['flights-layer'],
+  shipping:        ['ships-layer'],
+  seismic:         ['seismic-layer'],
+  fires:           ['fires-layer'],
+  trains:          ['trains-layer'],
+  submarineCables: ['cables-layer', 'cable-landings-layer'],
 }
 
 /* ── Component ── */
 export default function MapCenter({ newsItems, flights, ships, seismic, fires, fids, aiBrief }) {
-  const mapRef    = useRef(null)
-  const groupsRef = useRef({})
+  const mapRef     = useRef(null)
+  const markersRef = useRef({})
+  const dataRef    = useRef({ flights: [], ships: [], seismic: [], fires: [] })
+  const cablesRef  = useRef(null)
+
   const [activeTab, setActiveTab] = useState('news')
   const [layers, setLayers]       = useState(LAYER_DEFAULTS)
-  const [cablesData, setCablesData] = useState(null)
 
   /* ── Init map once ── */
   useEffect(() => {
     if (mapRef.current) return
 
-    const map = L.map('au-map', {
-      center: [-27, 134],
-      zoom: 4,
-      zoomControl: false,
+    const map = new maplibregl.Map({
+      container: 'au-map',
+      style:     MAP_STYLE,
+      center:    [134, -27],
+      zoom:      4,
       attributionControl: true,
     })
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OSM</a> © <a href="https://carto.com/">CARTO</a>',
-      subdomains: 'abcd',
-      maxZoom: 19,
-    }).addTo(map)
+    map.addControl(new maplibregl.NavigationControl(), 'top-left')
 
-    L.control.zoom({ position: 'topleft' }).addTo(map)
+    map.on('load', () => {
+      /* ── GeoJSON sources ── */
+      ;[
+        ['flights',        flightsFC(dataRef.current.flights)],
+        ['ships',          shipsFC(dataRef.current.ships)],
+        ['seismic',        seismicFC(dataRef.current.seismic)],
+        ['fires',          firesFC(dataRef.current.fires)],
+        ['rails',          railsFC()],
+        ['cables',         cablesRef.current?.cables   ?? EMPTY_FC],
+        ['cable-landings', cablesRef.current?.landings ?? EMPTY_FC],
+      ].forEach(([id, data]) => map.addSource(id, { type: 'geojson', data }))
 
-    const on  = g => L.layerGroup().addTo(map)
-    const off = () => L.layerGroup()
+      /* ── GL layers ── */
+      const vis = key => LAYER_DEFAULTS[key] ? 'visible' : 'none'
 
-    const groups = {
-      newsClusters:     on(),
-      intelligenceHubs: on(),
-      liveFlights:      on(),
-      shipping:         on(),
-      fires:            on(),
-      seismic:          off(),   // default off
-      airports:         off(),   // default off
-      seaports:         off(),   // default off
-      militaryBases:    off(),   // default off
-      infrastructure:   off(),   // default off
-      trains:           off(),   // default off
-      financeLayer:     off(),   // default off
-      submarineCables:  off(),   // default off
-    }
+      map.addLayer({
+        id: 'flights-layer', type: 'circle', source: 'flights',
+        layout: { visibility: vis('liveFlights') },
+        paint: {
+          'circle-radius': 4,
+          'circle-color':  '#00ffcc',
+          'circle-stroke-width': 1,
+          'circle-stroke-color': 'rgba(0,255,204,0.35)',
+        },
+      })
+      addClickPopup(map, 'flights-layer',
+        p => `<b>${p.callsign}</b><br/>Alt: ${Math.round(p.altitude)}m · ${Math.round(p.velocity)} m/s`)
 
-    groupsRef.current = groups
-    mapRef.current    = map
+      map.addLayer({
+        id: 'ships-layer', type: 'circle', source: 'ships',
+        layout: { visibility: vis('shipping') },
+        paint: {
+          'circle-radius': 5,
+          'circle-color':  ['case', ['>', ['get', 'speed'], 10], '#f5c842', '#00ffcc'],
+          'circle-stroke-width': 1,
+          'circle-stroke-color': 'rgba(255,255,255,0.2)',
+        },
+      })
+      addClickPopup(map, 'ships-layer',
+        p => `<b>${p.name}</b><br/>MMSI: ${p.mmsi} · ${Number(p.speed).toFixed(1)} kn`)
 
-    drawNewsClusters(groups.newsClusters)
-    drawIntelHubs(groups.intelligenceHubs)
-    drawAirports(groups.airports)
-    drawSeaports(groups.seaports)
-    drawMilitaryBases(groups.militaryBases)
-    drawInfrastructure(groups.infrastructure)
-    drawRailRoutes(groups.trains)
-    drawFinanceHubs(groups.financeLayer)
+      map.addLayer({
+        id: 'seismic-layer', type: 'circle', source: 'seismic',
+        layout: { visibility: vis('seismic') },
+        paint: {
+          'circle-radius':  ['interpolate', ['linear'], ['get', 'magnitude'], 1, 5, 5, 18, 8, 36],
+          'circle-color':   'rgba(255,100,30,0.55)',
+          'circle-stroke-width': 1,
+          'circle-stroke-color': '#ff6b1e',
+          'circle-opacity': ['interpolate', ['linear'], ['get', 'magnitude'], 1, 0.3, 8, 0.85],
+        },
+      })
+      addClickPopup(map, 'seismic-layer',
+        p => `<b>M${Number(p.magnitude).toFixed(1)}</b><br/>${p.place}<br/>Depth: ${p.depth}km`)
+
+      map.addLayer({
+        id: 'fires-layer', type: 'circle', source: 'fires',
+        layout: { visibility: vis('fires') },
+        paint: {
+          'circle-radius':  ['case', ['>', ['get', 'brightness'], 350], 7, 5],
+          'circle-color':   '#ff4400',
+          'circle-stroke-width': 1,
+          'circle-stroke-color': '#ff8800',
+          'circle-opacity': 0.85,
+        },
+      })
+      addClickPopup(map, 'fires-layer',
+        p => `🔥 Hotspot<br/>Brightness: ${p.brightness}<br/>Confidence: ${p.confidence}`)
+
+      map.addLayer({
+        id: 'trains-layer', type: 'line', source: 'rails',
+        layout: { visibility: vis('trains'), 'line-join': 'round', 'line-cap': 'round' },
+        paint: {
+          'line-color':     ['get', 'color'],
+          'line-width':     2,
+          'line-opacity':   0.75,
+          'line-dasharray': [2, 2],
+        },
+      })
+
+      map.addLayer({
+        id: 'cables-layer', type: 'line', source: 'cables',
+        layout: { visibility: vis('submarineCables'), 'line-join': 'round' },
+        paint: { 'line-color': '#ff6b35', 'line-width': 1.5, 'line-opacity': 0.6 },
+      })
+
+      map.addLayer({
+        id: 'cable-landings-layer', type: 'circle', source: 'cable-landings',
+        layout: { visibility: vis('submarineCables') },
+        paint: {
+          'circle-radius': 3,
+          'circle-color':  '#ff6b35',
+          'circle-stroke-width': 1,
+          'circle-stroke-color': '#fff',
+        },
+      })
+      addClickPopup(map, 'cable-landings-layer', p => `<b>${p.name ?? 'Landing Point'}</b>`)
+
+      /* ── HTML markers for static overlays ── */
+      markersRef.current = {
+        newsClusters:     createNewsClusters(map),
+        intelligenceHubs: setMarkersVisible(createIntelHubs(map),      LAYER_DEFAULTS.intelligenceHubs),
+        airports:         setMarkersVisible(createAirportMarkers(map),  LAYER_DEFAULTS.airports),
+        seaports:         setMarkersVisible(createSeaportMarkers(map),  LAYER_DEFAULTS.seaports),
+        militaryBases:    setMarkersVisible(createMilitaryMarkers(map), LAYER_DEFAULTS.militaryBases),
+        infrastructure:   setMarkersVisible(createInfraMarkers(map),    LAYER_DEFAULTS.infrastructure),
+        financeLayer:     setMarkersVisible(createFinanceMarkers(map),  LAYER_DEFAULTS.financeLayer),
+      }
+    })
+
+    mapRef.current = map
 
     return () => {
       map.remove()
-      mapRef.current    = null
-      groupsRef.current = {}
+      mapRef.current     = null
+      markersRef.current = {}
     }
   }, [])
 
-  /* ── Live layer updates ── */
+  /* ── Fetch cables once, push to sources ── */
   useEffect(() => {
-    const g = groupsRef.current.liveFlights
-    if (!g) return
-    redrawFlights(g, layers.liveFlights ? (flights || []) : [])
-  }, [flights, layers.liveFlights])
-
-  useEffect(() => {
-    const g = groupsRef.current.shipping
-    if (!g) return
-    redrawShips(g, layers.shipping ? (ships || []) : [])
-  }, [ships, layers.shipping])
-
-  useEffect(() => {
-    const g = groupsRef.current.seismic
-    if (!g) return
-    redrawSeismic(g, layers.seismic ? (seismic || []) : [])
-  }, [seismic, layers.seismic])
-
-  useEffect(() => {
-    const g = groupsRef.current.fires
-    if (!g) return
-    redrawFires(g, layers.fires ? (fires || []) : [])
-  }, [fires, layers.fires])
-
-  /* ── Fetch cables once on mount ── */
-  useEffect(() => {
-    fetch('/api/cables').then(r => r.json()).then(setCablesData).catch(() => {})
+    fetch('/api/cables').then(r => r.json()).then(data => {
+      cablesRef.current = data
+      mapRef.current?.getSource('cables')?.setData(data.cables ?? EMPTY_FC)
+      mapRef.current?.getSource('cable-landings')?.setData(data.landings ?? EMPTY_FC)
+    }).catch(() => {})
   }, [])
 
-  /* ── Draw cables when data arrives or layer toggled ── */
+  /* ── Live data → GeoJSON source updates ── */
   useEffect(() => {
-    const g = groupsRef.current.submarineCables
-    if (!g) return
-    g.clearLayers()
-    if (layers.submarineCables && cablesData) drawCables(g, cablesData)
-  }, [cablesData, layers.submarineCables])
+    dataRef.current.flights = flights || []
+    mapRef.current?.getSource('flights')?.setData(flightsFC(flights))
+  }, [flights])
 
-  /* ── Toggle overlay visibility ── */
-  const toggleLayer = (key) => {
+  useEffect(() => {
+    dataRef.current.ships = ships || []
+    mapRef.current?.getSource('ships')?.setData(shipsFC(ships))
+  }, [ships])
+
+  useEffect(() => {
+    dataRef.current.seismic = seismic || []
+    mapRef.current?.getSource('seismic')?.setData(seismicFC(seismic))
+  }, [seismic])
+
+  useEffect(() => {
+    dataRef.current.fires = fires || []
+    mapRef.current?.getSource('fires')?.setData(firesFC(fires))
+  }, [fires])
+
+  /* ── Layer toggle ── */
+  const toggleLayer = key => {
     setLayers(prev => {
-      const next  = { ...prev, [key]: !prev[key] }
-      const map   = mapRef.current
-      const group = groupsRef.current[key]
-      if (map && group) {
-        if (next[key]) map.addLayer(group)
-        else           map.removeLayer(group)
-      }
+      const next    = { ...prev, [key]: !prev[key] }
+      const visible = next[key]
+      const map     = mapRef.current
+      if (!map) return next
+
+      GL_LAYERS[key]?.forEach(id => {
+        if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none')
+      })
+
+      markersRef.current[key]?.forEach(m => {
+        m.getElement().style.display = visible ? '' : 'none'
+      })
+
       return next
     })
   }
@@ -543,9 +539,9 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
 
 /* ── Transport tab ── */
 function TransportPanel({ flights, ships, fids }) {
-  const airports   = Object.values(fids || {})
-  const isAirlabs  = airports[0]?.source === 'airlabs'
-  const isOpenSky  = airports[0]?.source === 'opensky'
+  const airports    = Object.values(fids || {})
+  const isAirlabs   = airports[0]?.source === 'airlabs'
+  const isOpenSky   = airports[0]?.source === 'opensky'
   const sourceLabel = isAirlabs ? 'AirLabs · scheduled' : isOpenSky ? 'OpenSky · TCA traffic' : null
 
   return (

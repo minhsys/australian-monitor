@@ -28,12 +28,14 @@ function parseShip(msg) {
   }
 }
 
-export function startShipsWatcher(broadcast) {
+export function startShipsWatcher(broadcast, store) {
   const key = process.env.AISSTREAM_KEY
   if (!key) {
     console.warn('[SHIPS] AISSTREAM_KEY not set — AIS layer disabled')
     return
   }
+
+  if (!store.ships) store.ships = {}
 
   function connect() {
     const ws = new WebSocket(AIS_URL)
@@ -48,7 +50,9 @@ export function startShipsWatcher(broadcast) {
         const msg = JSON.parse(raw.toString())
         if (msg.MessageType !== 'PositionReport') return
         const ship = parseShip(msg)
-        if (ship) broadcast('ships', ship)
+        if (!ship) return
+        store.ships[ship.mmsi] = ship
+        broadcast('ships', ship)
       } catch (err) {
         console.warn('[SHIPS] Parse error:', err.message)
       }

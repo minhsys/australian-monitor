@@ -61,22 +61,29 @@ function hashId(str) {
   return Math.abs(h)
 }
 
+const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000  // drop anything older than 7 days
+
 async function fetchFeed(feed) {
   const result = await parser.parseURL(feed.url)
-  return (result.items || []).slice(0, 15).map(item => ({
-    id:     hashId(item.link || item.title || String(Math.random())),
-    cat:    categorise(item.title || '', feed.cat),
-    source: feed.source,
-    time:   relativeTime(item.pubDate || item.isoDate || new Date().toISOString()),
-    text:   (item.title || '').trim(),
-    url:    item.link || '',
-  }))
+  return (result.items || []).slice(0, 15).map(item => {
+    const ts = new Date(item.pubDate || item.isoDate || 0).getTime()
+    return {
+      id:        hashId(item.link || item.title || String(Math.random())),
+      cat:       categorise(item.title || '', feed.cat),
+      source:    feed.source,
+      time:      relativeTime(item.pubDate || item.isoDate || new Date().toISOString()),
+      timestamp: ts,
+      text:      (item.title || '').trim(),
+      url:       item.link || '',
+    }
+  })
 }
 
 export async function fetchRealNews() {
   const results = await Promise.allSettled(AU_FEEDS.map(fetchFeed))
   const items   = []
   const seen    = new Set()
+  const cutoff  = Date.now() - MAX_AGE_MS
 
   results.forEach((r, i) => {
     if (r.status === 'rejected') {
@@ -84,14 +91,16 @@ export async function fetchRealNews() {
       return
     }
     r.value.forEach(item => {
-      if (item.text && !seen.has(item.id)) {
+      if (item.text && !seen.has(item.id) && item.timestamp > cutoff) {
         seen.add(item.id)
         items.push(item)
       }
     })
   })
 
+  items.sort((a, b) => b.timestamp - a.timestamp)
+
   const ok = results.filter(r => r.status === 'fulfilled').length
-  console.log(`[NEWS] ${items.length} items from ${ok}/${AU_FEEDS.length} feeds`)
+  console.log(`[NEWS] ${items.length} items (≤7d) from ${ok}/${AU_FEEDS.length} feeds`)
   return items.slice(0, 200)
 }

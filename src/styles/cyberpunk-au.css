@@ -380,34 +380,42 @@ body {
   background: #090d1a;
 }
 
-/* Leaflet customisation */
-.leaflet-container {
-  background: #090d1a !important;
+/* MapLibre GL customisation */
+.maplibregl-canvas-container,
+.maplibregl-map {
+  background: #090d1a;
   font-family: var(--font-ui) !important;
 }
 
-.leaflet-control-zoom {
+.maplibregl-ctrl-group {
   border: 1px solid var(--border-bright) !important;
   background: var(--bg-panel) !important;
+  box-shadow: none !important;
 }
 
-.leaflet-control-zoom a {
+.maplibregl-ctrl-group button {
   background: var(--bg-panel) !important;
-  color: var(--accent-blue) !important;
   border-bottom: 1px solid var(--border) !important;
-  font-size: 16px !important;
-  line-height: 26px !important;
+  width: 28px !important;
+  height: 28px !important;
 }
 
-.leaflet-control-zoom a:hover {
+.maplibregl-ctrl-group button:hover {
   background: var(--bg-card-hover) !important;
-  color: var(--accent-cyan) !important;
 }
 
-.leaflet-control-attribution {
+.maplibregl-ctrl-group button span {
+  filter: invert(50%) sepia(100%) saturate(500%) hue-rotate(175deg);
+}
+
+.maplibregl-ctrl-attrib {
   background: rgba(9,13,26,0.7) !important;
   color: var(--text-dim) !important;
-  font-size: 15px !important;
+  font-size: 10px !important;
+}
+
+.maplibregl-ctrl-attrib a {
+  color: var(--text-muted) !important;
 }
 
 /* Map Overlay Panel (floating on map) */
@@ -1119,24 +1127,28 @@ body {
 }
 
 /* ============================================================
-   LEAFLET CUSTOM POPUP
+   MAPLIBRE CUSTOM POPUP
    ============================================================ */
-.leaflet-popup-content-wrapper {
+.maplibregl-popup.au-popup .maplibregl-popup-content {
   background: var(--bg-card) !important;
   border: 1px solid var(--border-bright) !important;
   border-radius: var(--radius) !important;
   box-shadow: 0 4px 20px rgba(0,0,0,0.6) !important;
-}
-
-.leaflet-popup-content {
   color: var(--text-primary) !important;
   font-family: var(--font-mono) !important;
-  font-size: 15px !important;
-  margin: 8px 10px !important;
+  font-size: 13px !important;
+  padding: 8px 10px !important;
 }
 
-.leaflet-popup-tip {
-  background: var(--bg-card) !important;
+.maplibregl-popup.au-popup .maplibregl-popup-tip {
+  border-top-color: var(--bg-card) !important;
+  border-bottom-color: var(--bg-card) !important;
+}
+
+.maplibregl-popup.au-popup .maplibregl-popup-close-button {
+  color: var(--text-muted) !important;
+  font-size: 16px !important;
+  padding: 2px 6px !important;
 }
 
 /* ============================================================

@@ -66,13 +66,15 @@ export default function App() {
   useEffect(() => {
     const poll = async () => {
       try {
-        const [newsRes, finRes, weatherRes, energyRes, absRes, vitalsRes] = await Promise.allSettled([
+        const [newsRes, finRes, weatherRes, energyRes, absRes, vitalsRes, flightsRes, shipsRes] = await Promise.allSettled([
           fetch('/api/news').then(r => r.json()),
           fetch('/api/financial').then(r => r.json()),
           fetch('/api/weather').then(r => r.json()),
           fetch('/api/energy').then(r => r.json()),
           fetch('/api/abs').then(r => r.json()),
           fetch('/api/vitals').then(r => r.json()),
+          fetch('/api/flights').then(r => r.json()),
+          fetch('/api/ships').then(r => r.json()),
         ])
         if (newsRes.status === 'fulfilled' && newsRes.value?.items) {
           setNewsItems(newsRes.value.items)
@@ -91,6 +93,14 @@ export default function App() {
         }
         if (vitalsRes.status === 'fulfilled' && vitalsRes.value?.airQuality) {
           setVitals(vitalsRes.value)
+        }
+        if (flightsRes.status === 'fulfilled' && Array.isArray(flightsRes.value)) {
+          setFlights(flightsRes.value)
+        }
+        if (shipsRes.status === 'fulfilled' && Array.isArray(shipsRes.value)) {
+          const shipMap = {}
+          shipsRes.value.forEach(s => { shipMap[s.mmsi] = s })
+          setShips(shipMap)
         }
       } catch { /* server not up yet in pure client dev mode — use mock data */ }
     }

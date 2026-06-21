@@ -1,4 +1,5 @@
-import { Layers } from 'lucide-react'
+import { useState } from 'react'
+import { Layers, Minus, Plus } from 'lucide-react'
 
 const OVERLAY_ITEMS = [
   { key: 'liveFlights',       icon: '✈',  label: 'Live Flights (Realtime)' },
@@ -14,13 +15,22 @@ const OVERLAY_ITEMS = [
 ]
 
 export default function MapOverlayControls({ layers, onToggle }) {
+  const [isMinimized, setIsMinimized] = useState(false)
+
   return (
-    <div className="map-overlay-panel">
+    <div className={`map-overlay-panel ${isMinimized ? 'minimized' : ''}`}>
       <div className="overlay-panel-title">
         <Layers size={10} />
         MAP OVERLAYS
+        <button
+          className="overlay-minimize-btn"
+          onClick={() => setIsMinimized(!isMinimized)}
+          aria-label={isMinimized ? 'Expand map overlays' : 'Minimize map overlays'}
+        >
+          {isMinimized ? <Plus size={10} /> : <Minus size={10} />}
+        </button>
       </div>
-      {OVERLAY_ITEMS.map(item => (
+      {!isMinimized && OVERLAY_ITEMS.map(item => (
         <div
           key={item.key}
           className="overlay-item"

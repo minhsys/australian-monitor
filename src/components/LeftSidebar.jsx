@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react'
 import { RefreshCw, Cloud, Wind, Droplets, Tv, Plus } from 'lucide-react'
 
 const PRESET_CHANNELS = [
-  { id: 'au-live', name: 'AU Live',  url: 'https://www.youtube.com/embed/vOTiJkg1voo?autoplay=1&mute=1' },
-  { id: 'sky-au',  name: 'Sky AU',   url: 'https://www.youtube.com/embed/RTL8K1Tyjgw?autoplay=1&mute=1' },
+  { id: 'au-live', name: 'ABC News Live',  url: 'https://www.youtube.com/embed/vOTiJkg1voo?autoplay=1&mute=1' },
+  { id: 'sky-au',  name: 'Sky News',   url: 'https://www.youtube.com/embed/YDvsBbKfLPA?autoplay=1&mute=1' },
   { id: 'cnn',     name: 'CNN',      url: 'https://www.youtube.com/embed/GotlA1KKWoo?autoplay=1&mute=1' },
-  { id: 'abc-au',  name: 'ABC News', url: 'https://www.youtube.com/embed/w84UV-XXBtQ?autoplay=1&mute=1' },
+  { id: 'abc-au',  name: 'Al Jazeera', url: 'https://www.youtube.com/embed/gCNeDWCI0vo?autoplay=1&mute=1' },
 ]
 
 function toEmbedUrl(raw) {

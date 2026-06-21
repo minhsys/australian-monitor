@@ -107,7 +107,7 @@ export default function RightSidebar({ financial, energy, absData, vitals }) {
       <div className="fin-body">
         {/* ── ASX 200 hero (always visible) ── */}
         <div className="index-hero">
-          <div className="index-label">CHỈ SỐ THỊ TRƯỜNG / BENCHMARK INDEX</div>
+          <div className="index-label">BENCHMARK INDEX</div>
           <div className="index-name">S&amp;P / ASX 200</div>
           <div className="index-value-row">
             <span className="index-value">{data.asx200.value.toLocaleString('en-AU', { minimumFractionDigits: 2 })}</span>

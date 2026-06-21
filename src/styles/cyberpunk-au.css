@@ -444,6 +444,26 @@ body {
   gap: 5px;
 }
 
+.map-overlay-panel.minimized .overlay-panel-title { margin-bottom: 0; }
+
+.overlay-minimize-btn {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid var(--border-bright);
+  border-radius: 2px;
+  color: var(--text-muted);
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.overlay-minimize-btn:hover { color: var(--accent-blue); border-color: var(--accent-blue); }
+
 .overlay-item {
   display: flex;
   align-items: center;
@@ -610,6 +630,7 @@ body {
 
 .news-search {
   flex: 1;
+  min-width: 90px;
   max-width: 220px;
   display: flex;
   align-items: center;
@@ -790,11 +811,16 @@ body {
   display: flex;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  overflow-x: auto;
 }
 
+.fin-tabs::-webkit-scrollbar { height: 4px; }
+.fin-tabs::-webkit-scrollbar-track { background: var(--bg-root); }
+.fin-tabs::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 2px; }
+
 .fin-tab {
-  flex: 1;
-  padding: 6px 4px;
+  flex: 0 0 auto;
+  padding: 6px 10px;
   text-align: center;
   font-family: var(--font-mono);
   font-size: 15px;

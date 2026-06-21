@@ -4,16 +4,16 @@ import { Search, RefreshCw, Bot } from 'lucide-react'
 const CATEGORIES = ['All Feeds', 'Security', 'Economy', 'Defence', 'Politics', 'Pacific', 'Cyber', 'Emergency']
 
 const MOCK_NEWS = [
-  { id: 1, cat: 'defence',   source: 'DoD Australia',   time: '3m ago',  text: 'RAAF F-35As complete joint exercise with USAF at Tindal — largest air combat training package in NT history' },
-  { id: 2, cat: 'economy',   source: 'AFR',             time: '7m ago',  text: 'ASX 200 opens lower as iron ore futures slide on softer Chinese PMI data; BHP, RIO lead losses in resources sector' },
-  { id: 3, cat: 'security',  source: 'ABC News',        time: '11m ago', text: 'AFP and ASIO joint operation disrupts espionage network linked to foreign state actor; two individuals charged' },
-  { id: 4, cat: 'pacific',   source: 'RNZ Pacific',     time: '18m ago', text: 'Solomon Islands PM signals review of Chinese security agreement terms — Canberra welcomes dialogue opportunity' },
-  { id: 5, cat: 'cyber',     source: 'ACSC',            time: '22m ago', text: 'ASD Advisory: Active exploitation of critical vulnerability in widely-used AU government software — patch immediately' },
-  { id: 6, cat: 'emergency', source: 'BOM',             time: '29m ago', text: 'Severe Thunderstorm Warning issued for South East QLD including Brisbane, Gold Coast — damaging winds, large hail' },
-  { id: 7, cat: 'politics',  source: 'SMH',             time: '34m ago', text: 'Senate Armed Services Committee grills Defence over AUKUS submarine cost blowout — billions over initial estimate' },
-  { id: 8, cat: 'economy',   source: 'RBA',             time: '41m ago', text: 'RBA Governor: inflation returning to target band — board monitoring labour market data ahead of August decision' },
-  { id: 9, cat: 'pacific',   source: 'ABC Pacific',     time: '55m ago', text: 'PNG security forces deployed to Highlands following renewed inter-tribal conflict; AU deployment assessed unlikely' },
-  { id: 10,cat: 'security',  source: 'ASPI Strategist', time: '1h ago',  text: 'Analysis: Chinese naval activity in Coral Sea up 40% year-on-year — cable infrastructure proximity a concern' },
+  { id: 1, cat: 'defence',   source: 'DoD Australia',   origin: 'domestic', time: '3m ago',  text: 'RAAF F-35As complete joint exercise with USAF at Tindal — largest air combat training package in NT history' },
+  { id: 2, cat: 'economy',   source: 'AFR',             origin: 'domestic', time: '7m ago',  text: 'ASX 200 opens lower as iron ore futures slide on softer Chinese PMI data; BHP, RIO lead losses in resources sector' },
+  { id: 3, cat: 'security',  source: 'ABC News',        origin: 'domestic', time: '11m ago', text: 'AFP and ASIO joint operation disrupts espionage network linked to foreign state actor; two individuals charged' },
+  { id: 4, cat: 'pacific',   source: 'RNZ Pacific',     origin: 'overseas', time: '18m ago', text: 'Solomon Islands PM signals review of Chinese security agreement terms — Canberra welcomes dialogue opportunity' },
+  { id: 5, cat: 'cyber',     source: 'ACSC',            origin: 'domestic', time: '22m ago', text: 'ASD Advisory: Active exploitation of critical vulnerability in widely-used AU government software — patch immediately' },
+  { id: 6, cat: 'emergency', source: 'BOM',             origin: 'domestic', time: '29m ago', text: 'Severe Thunderstorm Warning issued for South East QLD including Brisbane, Gold Coast — damaging winds, large hail' },
+  { id: 7, cat: 'politics',  source: 'SMH',             origin: 'domestic', time: '34m ago', text: 'Senate Armed Services Committee grills Defence over AUKUS submarine cost blowout — billions over initial estimate' },
+  { id: 8, cat: 'economy',   source: 'RBA',             origin: 'domestic', time: '41m ago', text: 'RBA Governor: inflation returning to target band — board monitoring labour market data ahead of August decision' },
+  { id: 9, cat: 'pacific',   source: 'ABC Pacific',     origin: 'domestic', time: '55m ago', text: 'PNG security forces deployed to Highlands following renewed inter-tribal conflict; AU deployment assessed unlikely' },
+  { id: 10,cat: 'security',  source: 'ASPI Strategist', origin: 'domestic', time: '1h ago',  text: 'Analysis: Chinese naval activity in Coral Sea up 40% year-on-year — cable infrastructure proximity a concern' },
 ]
 
 const CAT_CLASSES = {
@@ -30,9 +30,10 @@ export default function NewsPanel({ newsItems, aiBrief }) {
   const items = newsItems?.length ? newsItems : MOCK_NEWS
 
   const filtered = items.filter(item => {
+    const matchSource = !item.origin || item.origin === activeSource
     const matchCat  = activeCategory === 'All Feeds' || item.cat.toLowerCase() === activeCategory.toLowerCase()
     const matchSearch = !searchQuery || item.text.toLowerCase().includes(searchQuery.toLowerCase())
-    return matchCat && matchSearch
+    return matchSource && matchCat && matchSearch
   })
 
   return (
@@ -93,7 +94,7 @@ export default function NewsPanel({ newsItems, aiBrief }) {
         <div className="ai-brief" onClick={() => setBriefExpanded(false)} style={{ cursor: 'pointer' }}>
           {aiBrief
             ? aiBrief.brief
-            : 'Generating intelligence brief… (requires GPT4O_KEY or GEMINI_KEY)'
+            : 'Generating intelligence brief…'
           }
           <div className="ai-brief-status">
             {aiBrief

@@ -31,7 +31,7 @@ export default function App() {
       ws.onmessage = (e) => {
         try {
           const msg = JSON.parse(e.data)
-          if (msg.type === 'news')      setNewsItems(prev => [msg.payload, ...prev].slice(0, 50))
+          if (msg.type === 'news')      setNewsItems(prev => [msg.payload, ...prev].slice(0, 200))
           if (msg.type === 'feedStats') setFeedStats(msg.payload)
           if (msg.type === 'financial') setFinancial(msg.payload)
           if (msg.type === 'flights')   setFlights(msg.payload)

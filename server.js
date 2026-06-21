@@ -85,7 +85,7 @@ function broadcast(type, payload) {
 
 wss.on('connection', (ws) => {
   console.log('[WS] Client connected')
-  if (store.news.length)   ws.send(JSON.stringify({ type: 'news_batch', payload: store.news.slice(0, 20) }))
+  if (store.news.length)   ws.send(JSON.stringify({ type: 'news_batch', payload: store.news.slice(0, 200) }))
   if (store.financial)     ws.send(JSON.stringify({ type: 'financial',  payload: store.financial }))
   if (store.feedStats)     ws.send(JSON.stringify({ type: 'feedStats',  payload: store.feedStats }))
   if (store.weather)       ws.send(JSON.stringify({ type: 'weather',    payload: store.weather }))
@@ -119,7 +119,7 @@ app.get('/api/health', (_, res) => {
 })
 
 app.get('/api/news', noCache, (_, res) => {
-  res.json({ items: store.news.slice(0, 50) })
+  res.json({ items: store.news.slice(0, 200) })
 })
 
 app.get('/api/financial', noCache, (_, res) => {
@@ -396,14 +396,14 @@ function getMockFinancial() {
 let _mockId = 100
 function getMockNews() {
   return [
-    { id: _mockId++, cat: 'defence',   source: 'DoD Australia',   time: '3m ago',  text: 'RAAF F-35As complete joint exercise with USAF at Tindal — largest air combat training package in NT history' },
-    { id: _mockId++, cat: 'economy',   source: 'AFR',             time: '7m ago',  text: 'ASX 200 opens lower as iron ore futures slide on softer Chinese PMI data; BHP, RIO lead losses' },
-    { id: _mockId++, cat: 'security',  source: 'ABC News',        time: '11m ago', text: 'AFP and ASIO joint operation disrupts espionage network linked to foreign state actor; two charged' },
-    { id: _mockId++, cat: 'pacific',   source: 'RNZ Pacific',     time: '18m ago', text: 'Solomon Islands PM signals review of Chinese security agreement — Canberra welcomes dialogue' },
-    { id: _mockId++, cat: 'cyber',     source: 'ACSC',            time: '22m ago', text: 'ASD Advisory: Active exploitation of critical vulnerability in AU government software — patch immediately' },
-    { id: _mockId++, cat: 'emergency', source: 'BOM',             time: '29m ago', text: 'Severe Thunderstorm Warning — SE QLD including Brisbane, Gold Coast — damaging winds, large hail' },
-    { id: _mockId++, cat: 'politics',  source: 'SMH',             time: '34m ago', text: 'Senate Armed Services Committee grills Defence over AUKUS submarine cost blowout' },
-    { id: _mockId++, cat: 'economy',   source: 'RBA',             time: '41m ago', text: 'RBA Governor: inflation returning to target band — monitoring labour market ahead of August decision' },
+    { id: _mockId++, cat: 'defence',   source: 'DoD Australia',   origin: 'domestic', time: '3m ago',  text: 'RAAF F-35As complete joint exercise with USAF at Tindal — largest air combat training package in NT history' },
+    { id: _mockId++, cat: 'economy',   source: 'AFR',             origin: 'domestic', time: '7m ago',  text: 'ASX 200 opens lower as iron ore futures slide on softer Chinese PMI data; BHP, RIO lead losses' },
+    { id: _mockId++, cat: 'security',  source: 'ABC News',        origin: 'domestic', time: '11m ago', text: 'AFP and ASIO joint operation disrupts espionage network linked to foreign state actor; two charged' },
+    { id: _mockId++, cat: 'pacific',   source: 'RNZ Pacific',     origin: 'overseas', time: '18m ago', text: 'Solomon Islands PM signals review of Chinese security agreement — Canberra welcomes dialogue' },
+    { id: _mockId++, cat: 'cyber',     source: 'ACSC',            origin: 'domestic', time: '22m ago', text: 'ASD Advisory: Active exploitation of critical vulnerability in AU government software — patch immediately' },
+    { id: _mockId++, cat: 'emergency', source: 'BOM',             origin: 'domestic', time: '29m ago', text: 'Severe Thunderstorm Warning — SE QLD including Brisbane, Gold Coast — damaging winds, large hail' },
+    { id: _mockId++, cat: 'politics',  source: 'SMH',             origin: 'domestic', time: '34m ago', text: 'Senate Armed Services Committee grills Defence over AUKUS submarine cost blowout' },
+    { id: _mockId++, cat: 'economy',   source: 'RBA',             origin: 'domestic', time: '41m ago', text: 'RBA Governor: inflation returning to target band — monitoring labour market ahead of August decision' },
   ]
 }
 

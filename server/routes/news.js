@@ -4,26 +4,26 @@ const parser = new Parser({ timeout: 8_000, headers: { 'User-Agent': 'AustraliaM
 
 const AU_FEEDS = [
   // Government & think tanks
-  { url: 'https://www.rba.gov.au/rss/rss-cb-media-releases.xml',              source: 'RBA',              cat: 'economy'  },
-  { url: 'https://www.aspistrategist.org.au/feed/',                            source: 'ASPI Strategist',  cat: 'defence'  },
-  { url: 'https://www.internationalaffairs.org.au/feed/',                      source: 'AIIA',             cat: 'defence'  },
+  { url: 'https://www.rba.gov.au/rss/rss-cb-media-releases.xml',              source: 'RBA',              cat: 'economy',  origin: 'domestic' },
+  { url: 'https://www.aspistrategist.org.au/feed/',                            source: 'ASPI Strategist',  cat: 'defence',  origin: 'domestic' },
+  { url: 'https://www.internationalaffairs.org.au/feed/',                      source: 'AIIA',             cat: 'defence',  origin: 'domestic' },
   // National broadcasters & mastheads
-  { url: 'https://www.abc.net.au/news/feed/51120/rss.xml',                    source: 'ABC Top Stories',  cat: 'general'  },
-  { url: 'https://www.abc.net.au/news/feed/1948/rss.xml',                     source: 'ABC Just In',      cat: 'general'  },
-  { url: 'https://www.theguardian.com/australia-news/rss',                    source: 'Guardian AU',      cat: 'general'  },
-  { url: 'https://www.smh.com.au/rss/feed.xml',                               source: 'SMH',              cat: 'general'  },
-  { url: 'https://www.theage.com.au/rss/feed.xml',                            source: 'The Age',          cat: 'general'  },
-  { url: 'https://thewest.com.au/rss',                                         source: 'The West AU',      cat: 'general'  },
-  { url: 'https://feeds.bbci.co.uk/news/world/australia/rss.xml',             source: 'BBC Australia',    cat: 'general'  },
+  { url: 'https://www.abc.net.au/news/feed/51120/rss.xml',                    source: 'ABC Top Stories',  cat: 'general',  origin: 'domestic' },
+  { url: 'https://www.abc.net.au/news/feed/1948/rss.xml',                     source: 'ABC Just In',      cat: 'general',  origin: 'domestic' },
+  { url: 'https://www.theguardian.com/australia-news/rss',                    source: 'Guardian AU',      cat: 'general',  origin: 'domestic' },
+  { url: 'https://www.smh.com.au/rss/feed.xml',                               source: 'SMH',              cat: 'general',  origin: 'domestic' },
+  { url: 'https://www.theage.com.au/rss/feed.xml',                            source: 'The Age',          cat: 'general',  origin: 'domestic' },
+  { url: 'https://thewest.com.au/rss',                                         source: 'The West AU',      cat: 'general',  origin: 'domestic' },
+  { url: 'https://feeds.bbci.co.uk/news/world/australia/rss.xml',             source: 'BBC Australia',    cat: 'general',  origin: 'overseas' },
   // Pacific & international
-  { url: 'https://www.rnz.co.nz/rss/pacific.xml',                             source: 'RNZ Pacific',      cat: 'pacific'  },
-  { url: 'https://www.rnz.co.nz/rss/world.xml',                               source: 'RNZ World',        cat: 'general'  },
-  { url: 'https://www.theguardian.com/world/asia-pacific/rss',                source: 'Guardian Pacific',  cat: 'pacific'  },
+  { url: 'https://www.rnz.co.nz/rss/pacific.xml',                             source: 'RNZ Pacific',      cat: 'pacific',  origin: 'overseas' },
+  { url: 'https://www.rnz.co.nz/rss/world.xml',                               source: 'RNZ World',        cat: 'general',  origin: 'overseas' },
+  { url: 'https://www.theguardian.com/world/asia-pacific/rss',                source: 'Guardian Pacific',  cat: 'pacific',  origin: 'overseas' },
   // Analysis & commentary
-  { url: 'https://theconversation.com/au/articles.atom',                       source: 'The Conversation', cat: 'general'  },
+  { url: 'https://theconversation.com/au/articles.atom',                       source: 'The Conversation', cat: 'general',  origin: 'domestic' },
   // Cyber & tech
-  { url: 'https://www.bleepingcomputer.com/feed/',                             source: 'BleepingComputer', cat: 'cyber'    },
-  { url: 'https://www.darkreading.com/rss.xml',                               source: 'Dark Reading',      cat: 'cyber'    },
+  { url: 'https://www.bleepingcomputer.com/feed/',                             source: 'BleepingComputer', cat: 'cyber',    origin: 'overseas' },
+  { url: 'https://www.darkreading.com/rss.xml',                               source: 'Dark Reading',      cat: 'cyber',    origin: 'overseas' },
 ]
 
 const DEFENCE_RE   = /defence|aukus|military|army|navy|raaf|adf|submarine|soldier|weapon/i
@@ -71,6 +71,7 @@ async function fetchFeed(feed) {
       id:        hashId(item.link || item.title || String(Math.random())),
       cat:       categorise(item.title || '', feed.cat),
       source:    feed.source,
+      origin:    feed.origin,
       time:      relativeTime(item.pubDate || item.isoDate || new Date().toISOString()),
       timestamp: ts,
       text:      (item.title || '').trim(),

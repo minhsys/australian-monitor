@@ -107,10 +107,10 @@ function findCoords(title, state) {
   return STATE_COORDS[state] ?? [-25, 133]
 }
 
-function parseWarnings(data) {
+function parseWarnings(data, typeFilter) {
   const now = Date.now()
   return (data || [])
-    .filter(w => FLOOD_TYPES.has(w.type) && new Date(w.expiry_time).getTime() > now)
+    .filter(w => (!typeFilter || typeFilter.has(w.type)) && new Date(w.expiry_time).getTime() > now)
     .map(w => {
       const [lat, lon] = findCoords(w.title, w.state)
       return {
@@ -136,11 +136,14 @@ export function startFloodsPoller(broadcast, store) {
         signal: AbortSignal.timeout(10_000),
       })
       if (!res.ok) throw new Error(`BOM warnings HTTP ${res.status}`)
-      const json   = await res.json()
-      const floods = parseWarnings(json.data)
-      store.floods = floods
+      const json    = await res.json()
+      const floods   = parseWarnings(json.data, FLOOD_TYPES)
+      const warnings = parseWarnings(json.data)
+      store.floods   = floods
+      store.warnings = warnings
       broadcast('floods', floods)
-      console.log(`[FLOODS] ${floods.length} active warnings from BOM`)
+      broadcast('warnings', warnings)
+      console.log(`[FLOODS] ${floods.length} flood warnings, ${warnings.length} total active BOM warnings`)
     } catch (err) {
       console.warn('[FLOODS] Poll failed:', err.message)
     }

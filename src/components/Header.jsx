@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Activity, Wifi, Rss, Globe } from 'lucide-react'
 
-export default function Header({ feedStats }) {
+export default function Header({ feedStats, threatIndex }) {
   const [time, setTime]           = useState(new Date())
   const [linkStatus, setLinkStatus] = useState('ONLINE')
 
@@ -31,6 +31,17 @@ export default function Header({ feedStats }) {
 
       {/* ── Right: status indicators ── */}
       <div className="header-right">
+        {/* Threat Level Index */}
+        {threatIndex?.overall && (
+          <div className="header-stat threat-badge" style={{ color: threatIndex.overall.color }}>
+            <span className="dot" style={{ background: threatIndex.overall.color, boxShadow: `0 0 6px ${threatIndex.overall.color}` }} />
+            <Activity size={11} />
+            <span className="header-stat-label" style={{ color: threatIndex.overall.color }}>
+              THREAT: {threatIndex.overall.label.toUpperCase()}
+            </span>
+          </div>
+        )}
+
         {/* OSINT Pulse */}
         <div className="header-stat">
           <Globe size={11} />

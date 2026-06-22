@@ -12,6 +12,7 @@ const OVERLAY_ITEMS = [
   { key: 'submarineCables',   icon: '🔌', label: 'Submarine Cables' },
   { key: 'fires',             icon: '🔥', label: 'Bushfire Hotspots (NASA)' },
   { key: 'floods',            icon: '🌊', label: 'Flood Warnings (BOM)' },
+  { key: 'roadClosures',      icon: '🚧', label: 'Road Closures (NSW)' },
 ]
 
 export default function MapOverlayControls({ layers, onToggle }) {

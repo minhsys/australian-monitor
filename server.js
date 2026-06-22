@@ -18,6 +18,9 @@ import { fetchCables }                                from './server/routes/cabl
 import { fetchRealEnergy, startEnergyPoller }         from './server/routes/energy.js'
 import { fetchAbsData, startAbsPoller }               from './server/routes/abs.js'
 import { startVitalsPoller }                          from './server/routes/vitals.js'
+import { startThreatIndexPoller }                     from './server/routes/threatIndex.js'
+import { startRoadClosuresPoller }                    from './server/routes/roadClosures.js'
+import { startPortCongestionPoller }                  from './server/routes/portCongestion.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app       = express()
@@ -103,6 +106,16 @@ wss.on('connection', (ws) => {
     ws.send(JSON.stringify({ type: 'fires', payload: store.fires }))
   if (store.floods?.length)
     ws.send(JSON.stringify({ type: 'floods', payload: store.floods }))
+  if (store.seismic?.length)
+    ws.send(JSON.stringify({ type: 'seismic', payload: store.seismic }))
+  if (store.warnings?.length)
+    ws.send(JSON.stringify({ type: 'warnings', payload: store.warnings }))
+  if (store.threatIndex)
+    ws.send(JSON.stringify({ type: 'threat_index', payload: store.threatIndex }))
+  if (store.roadClosures?.length)
+    ws.send(JSON.stringify({ type: 'road_closures', payload: store.roadClosures }))
+  if (store.portCongestion?.length)
+    ws.send(JSON.stringify({ type: 'port_congestion', payload: store.portCongestion }))
 })
 
 /* ─────────────────────────────────────────────
@@ -162,6 +175,26 @@ app.get('/api/fires', noCache, (_, res) => {
 
 app.get('/api/floods', noCache, (_, res) => {
   res.json(store.floods ?? [])
+})
+
+app.get('/api/seismic', noCache, (_, res) => {
+  res.json(store.seismic ?? [])
+})
+
+app.get('/api/warnings', noCache, (_, res) => {
+  res.json(store.warnings ?? [])
+})
+
+app.get('/api/threat-index', noCache, (_, res) => {
+  res.json(store.threatIndex ?? null)
+})
+
+app.get('/api/road-closures', noCache, (_, res) => {
+  res.json(store.roadClosures ?? [])
+})
+
+app.get('/api/port-congestion', noCache, (_, res) => {
+  res.json(store.portCongestion ?? [])
 })
 
 app.get('/api/cables', async (_, res) => {
@@ -319,7 +352,7 @@ async function bootstrap() {
   // Phase 2: live map data pollers
   startFlightsPoller(broadcast, store)
   startShipsWatcher(broadcast, store)
-  startSeismicPoller(broadcast)
+  startSeismicPoller(broadcast, store)
   startFiresPoller(broadcast, store)
   startFloodsPoller(broadcast, store)
 
@@ -339,6 +372,15 @@ async function bootstrap() {
 
   // Phase 7: Australian vitals — fire danger, air quality, reservoirs, GBR SST
   startVitalsPoller(broadcast, store)
+
+  // Threat Level Index — composite score over seismic/weather/fire/flood/cyber, all already in store
+  startThreatIndexPoller(broadcast, store)
+
+  // NSW road closures/incidents/roadworks — TfNSW Open Data Hub (requires TRANSPORT_NSW_KEY)
+  startRoadClosuresPoller(broadcast, store)
+
+  // Port congestion — idle/anchored vessel counts near major seaports, derived from existing AIS ship data
+  startPortCongestionPoller(broadcast, store)
 
   // ✅ Only NOW open the port
   server.listen(PORT, () => {

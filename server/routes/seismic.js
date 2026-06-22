@@ -21,13 +21,14 @@ function parseFeatures(features) {
     .filter(e => e.lat != null && e.lon != null)
 }
 
-export function startSeismicPoller(broadcast) {
+export function startSeismicPoller(broadcast, store) {
   async function poll() {
     try {
       const res = await fetch(GA_URL, { signal: AbortSignal.timeout(10_000) })
       if (!res.ok) throw new Error(`GA seismic HTTP ${res.status}`)
       const data = await res.json()
       const events = parseFeatures(data.features)
+      store.seismic = events
       broadcast('seismic', events)
       console.log(`[SEISMIC] ${events.length} events`)
     } catch (err) {

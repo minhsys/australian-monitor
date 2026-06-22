@@ -20,6 +20,8 @@ export default function App() {
   const [energy,     setEnergy]     = useState(null)
   const [absData,    setAbsData]    = useState(null)
   const [vitals,     setVitals]     = useState(null)
+  const [threatIndex, setThreatIndex] = useState(null)
+  const [roadClosures, setRoadClosures] = useState([])
   const wsRef = useRef(null)
 
   /* ── WebSocket connection for live data push ── */
@@ -49,6 +51,8 @@ export default function App() {
           if (msg.type === 'abs_data') setAbsData(msg.payload)
           if (msg.type === 'vitals')   setVitals(msg.payload)
           if (msg.type === 'news_batch') setNewsItems(msg.payload)
+          if (msg.type === 'threat_index') setThreatIndex(msg.payload)
+          if (msg.type === 'road_closures') setRoadClosures(msg.payload)
         } catch {}
       }
 
@@ -68,7 +72,7 @@ export default function App() {
   useEffect(() => {
     const poll = async () => {
       try {
-        const [newsRes, finRes, weatherRes, energyRes, absRes, vitalsRes, flightsRes, shipsRes, firesRes, floodsRes] = await Promise.allSettled([
+        const [newsRes, finRes, weatherRes, energyRes, absRes, vitalsRes, flightsRes, shipsRes, firesRes, floodsRes, seismicRes, threatRes, roadRes] = await Promise.allSettled([
           fetch('/api/news').then(r => r.json()),
           fetch('/api/financial').then(r => r.json()),
           fetch('/api/weather').then(r => r.json()),
@@ -79,6 +83,9 @@ export default function App() {
           fetch('/api/ships').then(r => r.json()),
           fetch('/api/fires').then(r => r.json()),
           fetch('/api/floods').then(r => r.json()),
+          fetch('/api/seismic').then(r => r.json()),
+          fetch('/api/threat-index').then(r => r.json()),
+          fetch('/api/road-closures').then(r => r.json()),
         ])
         if (newsRes.status === 'fulfilled' && newsRes.value?.items) setNewsItems(newsRes.value.items)
         if (finRes.status === 'fulfilled') setFinancial(finRes.value)
@@ -94,6 +101,9 @@ export default function App() {
         }
         if (firesRes.status === 'fulfilled' && Array.isArray(firesRes.value)) setFires(firesRes.value)
         if (floodsRes.status === 'fulfilled' && Array.isArray(floodsRes.value)) setFloods(floodsRes.value)
+        if (seismicRes.status === 'fulfilled' && Array.isArray(seismicRes.value)) setSeismic(seismicRes.value)
+        if (threatRes.status === 'fulfilled' && threatRes.value) setThreatIndex(threatRes.value)
+        if (roadRes.status === 'fulfilled' && Array.isArray(roadRes.value)) setRoadClosures(roadRes.value)
       } catch { /* server not up yet in pure client dev mode — use mock data */ }
     }
 
@@ -108,7 +118,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <Header feedStats={feedStats} />
+      <Header feedStats={feedStats} threatIndex={threatIndex} />
 
       <div className="body-grid">
         <LeftSidebar feedStats={feedStats} onForcePoll={handleForcePoll} weather={weather} />
@@ -121,6 +131,8 @@ export default function App() {
           floods={floods}
           fids={fids}
           aiBrief={aiBrief}
+          threatIndex={threatIndex}
+          roadClosures={roadClosures}
         />
         <RightSidebar financial={financial} energy={energy} absData={absData} vitals={vitals} />
       </div>

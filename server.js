@@ -25,7 +25,7 @@ import { startEnergyOutagesPoller }                   from './server/routes/ener
 import { startEmergencyAlertsPoller }                 from './server/routes/emergencyAlerts.js'
 import { startEmergencyImpactPoller }                 from './server/routes/emergencyImpact.js'
 import { startEmergencyCrossCheckPoller }             from './server/routes/emergencyCrossCheck.js'
-import { fetchStateBoundaries, fetchSA2Boundaries }   from './server/routes/boundaries.js'
+import { fetchStateBoundaries, fetchSA2Boundaries, searchSA2ByName } from './server/routes/boundaries.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app       = express()
@@ -251,6 +251,22 @@ app.get('/api/boundaries/sa2', async (req, res) => {
   } catch (err) {
     console.error('[BOUNDARIES] SA2 fetch failed:', err.message)
     res.status(400).json({ error: 'Boundary data unavailable' })
+  }
+})
+
+const SUBURB_SEARCH_RE = /^[A-Za-zÀ-ſ'.\- ]{2,60}$/
+
+app.get('/api/boundaries/search', async (req, res) => {
+  const q = (req.query.q || '').trim()
+  if (!SUBURB_SEARCH_RE.test(q)) {
+    res.status(400).json({ error: 'Invalid search query' })
+    return
+  }
+  try {
+    res.json(await searchSA2ByName(q))
+  } catch (err) {
+    console.error('[BOUNDARIES] SA2 search failed:', err.message)
+    res.status(502).json({ error: 'Boundary search unavailable' })
   }
 })
 

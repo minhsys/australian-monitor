@@ -89,18 +89,12 @@ export default function NewsPanel({ newsItems, aiBrief }) {
         ))}
       </div>
 
-      {/* ── AI Brief (collapsible) ── */}
-      {briefExpanded && activeCategory === 'All Feeds' && (
+      {/* ── AI Brief (collapsible) — only rendered once a real brief is ready, no "generating" placeholder ── */}
+      {aiBrief && briefExpanded && activeCategory === 'All Feeds' && (
         <div className="ai-brief" onClick={() => setBriefExpanded(false)} style={{ cursor: 'pointer' }}>
-          {aiBrief
-            ? aiBrief.brief
-            : 'Generating intelligence brief…'
-          }
+          {aiBrief.brief}
           <div className="ai-brief-status">
-            {aiBrief
-              ? `↳ ${aiBrief.model.toUpperCase()} · Generated: ${new Date(aiBrief.generatedAt).toLocaleTimeString('en-AU', { hour12: false })} · click to collapse`
-              : '↳ STATUS: PENDING · AI Standby'
-            }
+            ↳ {aiBrief.model.toUpperCase()} · Generated: {new Date(aiBrief.generatedAt).toLocaleTimeString('en-AU', { hour12: false })} · click to collapse
           </div>
         </div>
       )}

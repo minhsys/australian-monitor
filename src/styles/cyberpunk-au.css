@@ -72,7 +72,7 @@ body {
 
 .body-grid {
   display: grid;
-  grid-template-columns: 1fr 45% 1fr;
+  grid-template-columns: 1fr 58% 1fr;
   overflow: hidden;
   border-top: 1px solid var(--border);
   min-width: 0;
@@ -424,6 +424,80 @@ body {
 }
 
 /* Map Overlay Panel (floating on map) */
+/* Suburb/area search box (floating top-center on map) */
+.suburb-search {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: 260px;
+}
+
+.suburb-search-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.suburb-search-icon {
+  position: absolute;
+  left: 9px;
+  color: var(--text-dim);
+  pointer-events: none;
+}
+
+.suburb-search-input {
+  width: 100%;
+  background: rgba(10, 15, 30, 0.92);
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius);
+  padding: 7px 10px 7px 26px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-primary);
+  backdrop-filter: blur(6px);
+  outline: none;
+}
+
+.suburb-search-input::placeholder { color: var(--text-dim); }
+.suburb-search-input:focus { border-color: var(--accent-blue); }
+
+.suburb-search-results {
+  margin-top: 4px;
+  background: rgba(10, 15, 30, 0.96);
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius);
+  max-height: 240px;
+  overflow-y: auto;
+  backdrop-filter: blur(6px);
+}
+
+.suburb-search-result {
+  padding: 7px 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.suburb-search-result:last-child { border-bottom: none; }
+.suburb-search-result:hover { background: rgba(0, 168, 255, 0.1); color: var(--text-primary); }
+
+.suburb-search-result .state-tag {
+  color: var(--accent-blue);
+  margin-left: 6px;
+  font-size: 10.5px;
+}
+
+.suburb-search-empty {
+  padding: 7px 10px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+
 .map-overlay-panel {
   position: absolute;
   top: 10px;
@@ -609,7 +683,7 @@ body {
    MAP BOTTOM PANEL (tabs + content)
    ============================================================ */
 .map-panel {
-  height: 380px;
+  height: 323px;
   border-top: 1px solid var(--border-bright);
   background: var(--bg-panel);
   display: flex;
@@ -1367,6 +1441,7 @@ body {
 @media (max-width: 480px) {
   .map-overlay-panel { min-width: 160px; padding: 8px; }
   .overlay-label { font-size: 11.5px; }
+  .suburb-search { width: 200px; }
 }
 
 /* ============================================================

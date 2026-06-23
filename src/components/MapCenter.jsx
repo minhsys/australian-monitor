@@ -4,6 +4,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import MapOverlayControls from './panels/MapOverlayControls.jsx'
 import NewsPanel from './panels/NewsPanel.jsx'
 import DrillPanel from './panels/DrillPanel.jsx'
+import SuburbSearch from './panels/SuburbSearch.jsx'
 import { pointInGeometry, geometryBounds } from '../utils/geo.js'
 
 /* ── Static data ── */
@@ -374,6 +375,7 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
   const markersRef = useRef({})
   const dataRef    = useRef({ flights: [], ships: [], seismic: [], fires: [], floods: [], roadClosures: [], emergencyAlerts: [] })
   const cablesRef  = useRef(null)
+  const statesRef  = useRef(null)
 
   const [activeTab, setActiveTab] = useState('news')
   const [layers, setLayers]       = useState(LAYER_DEFAULTS)
@@ -407,6 +409,29 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
         mapRef.current?.fitBounds([[minLon, minLat], [maxLon, maxLat]], { padding: 40, duration: 800 })
       }
     }
+  }
+
+  /* ── Jump straight to a suburb/area picked from the search box ── */
+  const onSearchSelect = (sa2Feature) => {
+    const stateFeature = statesRef.current?.features?.find(
+      f => f.properties.state_code_2021 === sa2Feature.properties.state_code_2021,
+    )
+    const state = stateFeature ? {
+      code:     stateFeature.properties.state_code_2021,
+      name:     stateFeature.properties.state_name_2021,
+      areaSqKm: stateFeature.properties.area_albers_sqkm,
+      geometry: stateFeature.geometry,
+    } : null
+    const sa2 = {
+      code:     sa2Feature.properties.sa2_code_2021,
+      name:     sa2Feature.properties.sa2_name_2021,
+      areaSqKm: sa2Feature.properties.area_albers_sqkm,
+      geometry: sa2Feature.geometry,
+    }
+
+    setDrill({ level: 'sa2', state, sa2 })
+    const [minLon, minLat, maxLon, maxLat] = geometryBounds(sa2.geometry)
+    mapRef.current?.fitBounds([[minLon, minLat], [maxLon, maxLat]], { padding: 60, duration: 800 })
   }
 
   /* ── Fetch SA2 boundaries for the selected state ── */
@@ -528,6 +553,7 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
       map.on('mouseleave', 'sa2-boundaries-fill', () => { map.getCanvas().style.cursor = '' })
 
       fetch('/api/boundaries/states').then(r => r.json()).then(geojson => {
+        statesRef.current = geojson
         map.getSource('state-boundaries')?.setData(geojson)
       }).catch(err => console.warn('[MAP] State boundaries fetch failed:', err))
 
@@ -769,6 +795,7 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
         <div className="map-corner bl" />
         <div className="map-corner br" />
 
+        <SuburbSearch onSelect={onSearchSelect} />
         <MapOverlayControls layers={layers} onToggle={toggleLayer} />
         <DrillPanel drill={drill} stats={drillStats} onNavigate={navigateDrill} />
       </div>

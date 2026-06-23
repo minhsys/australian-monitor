@@ -2,7 +2,7 @@
 
 Real-time Australian Geopolitical & Strategic Intelligence Dashboard.
 
-Inspired by Vietnam Intelligence Monitor — rebuilt for Australia with Leaflet, Express, WebSocket, dual AI (GPT-4o + Gemini 2.5-flash), and Australian data sources.
+ Australia with Leaflet, Express, WebSocket, dual AI ( Gemini 2.5-flash), and Australian data sources.
 
 ---
 

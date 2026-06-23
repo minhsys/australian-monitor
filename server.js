@@ -25,6 +25,7 @@ import { startEnergyOutagesPoller }                   from './server/routes/ener
 import { startEmergencyAlertsPoller }                 from './server/routes/emergencyAlerts.js'
 import { startEmergencyImpactPoller }                 from './server/routes/emergencyImpact.js'
 import { startEmergencyCrossCheckPoller }             from './server/routes/emergencyCrossCheck.js'
+import { fetchStateBoundaries, fetchSA2Boundaries }   from './server/routes/boundaries.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app       = express()
@@ -232,6 +233,24 @@ app.get('/api/cables', async (_, res) => {
   } catch (err) {
     console.error('[CABLES] Fetch failed:', err.message)
     res.status(503).json({ error: 'Cable data unavailable' })
+  }
+})
+
+app.get('/api/boundaries/states', async (_, res) => {
+  try {
+    res.json(await fetchStateBoundaries())
+  } catch (err) {
+    console.error('[BOUNDARIES] State fetch failed:', err.message)
+    res.status(503).json({ error: 'Boundary data unavailable' })
+  }
+})
+
+app.get('/api/boundaries/sa2', async (req, res) => {
+  try {
+    res.json(await fetchSA2Boundaries(req.query.state))
+  } catch (err) {
+    console.error('[BOUNDARIES] SA2 fetch failed:', err.message)
+    res.status(400).json({ error: 'Boundary data unavailable' })
   }
 })
 

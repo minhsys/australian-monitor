@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import MapOverlayControls from './panels/MapOverlayControls.jsx'
 import NewsPanel from './panels/NewsPanel.jsx'
+import DrillPanel from './panels/DrillPanel.jsx'
+import { pointInGeometry, geometryBounds } from '../utils/geo.js'
 
 /* ── Static data ── */
 const NEWS_CLUSTERS = [
@@ -375,10 +377,62 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
 
   const [activeTab, setActiveTab] = useState('news')
   const [layers, setLayers]       = useState(LAYER_DEFAULTS)
+  const [drill, setDrill]         = useState({ level: 'country', state: null, sa2: null })
 
   useEffect(() => {
     if (warningFocusSignal) setActiveTab('warning')
   }, [warningFocusSignal])
+
+  /* ── Drill-down navigation ── */
+  const onSelectState = (state) => {
+    setDrill({ level: 'state', state, sa2: null })
+    const [minLon, minLat, maxLon, maxLat] = geometryBounds(state.geometry)
+    mapRef.current?.fitBounds([[minLon, minLat], [maxLon, maxLat]], { padding: 40, duration: 800 })
+  }
+
+  const onSelectSA2 = (sa2) => {
+    setDrill(prev => ({ ...prev, level: 'sa2', sa2 }))
+    const [minLon, minLat, maxLon, maxLat] = geometryBounds(sa2.geometry)
+    mapRef.current?.fitBounds([[minLon, minLat], [maxLon, maxLat]], { padding: 60, duration: 800 })
+  }
+
+  const navigateDrill = (level) => {
+    if (level === 'country') {
+      setDrill({ level: 'country', state: null, sa2: null })
+      mapRef.current?.flyTo({ center: [134, -27], zoom: 4, duration: 800 })
+    } else if (level === 'state') {
+      setDrill(prev => ({ ...prev, level: 'state', sa2: null }))
+      if (drill.state) {
+        const [minLon, minLat, maxLon, maxLat] = geometryBounds(drill.state.geometry)
+        mapRef.current?.fitBounds([[minLon, minLat], [maxLon, maxLat]], { padding: 40, duration: 800 })
+      }
+    }
+  }
+
+  /* ── Fetch SA2 boundaries for the selected state ── */
+  useEffect(() => {
+    if (!drill.state?.code) {
+      mapRef.current?.getSource('sa2-boundaries')?.setData(EMPTY_FC)
+      return
+    }
+    fetch(`/api/boundaries/sa2?state=${drill.state.code}`).then(r => r.json()).then(geojson => {
+      mapRef.current?.getSource('sa2-boundaries')?.setData(geojson)
+    }).catch(err => console.warn('[MAP] SA2 boundaries fetch failed:', err))
+  }, [drill.state?.code])
+
+  /* ── Real signal counts within the selected boundary (no fabricated numbers) ── */
+  const drillStats = useMemo(() => {
+    const selected = drill.sa2 ?? drill.state
+    if (!selected) return null
+    const countIn = items => (items || []).filter(i => pointInGeometry(i.lon, i.lat, selected.geometry)).length
+    return {
+      areaSqKm:        selected.areaSqKm,
+      emergencyAlerts: countIn(emergencyAlerts),
+      roadClosures:    countIn(roadClosures),
+      fires:           countIn(fires),
+      floods:          countIn(floods),
+    }
+  }, [drill, emergencyAlerts, roadClosures, fires, floods])
 
   /* On mobile the map is display:none while another panel is active — MapLibre
      needs a resize() nudge when it becomes visible again so the canvas isn't stale. */
@@ -425,7 +479,57 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
         ['rails',          railsFC()],
         ['cables',         cablesRef.current?.cables   ?? EMPTY_FC],
         ['cable-landings', cablesRef.current?.landings ?? EMPTY_FC],
+        ['state-boundaries', EMPTY_FC],
+        ['sa2-boundaries',   EMPTY_FC],
       ].forEach(([id, data]) => map.addSource(id, { type: 'geojson', data }))
+
+      /* ── Drill-down boundary layers (added first so they sit below all data/marker layers) ── */
+      map.addLayer({
+        id: 'state-boundaries-fill', type: 'fill', source: 'state-boundaries',
+        paint: { 'fill-color': '#00a8ff', 'fill-opacity': 0.04 },
+      })
+      map.addLayer({
+        id: 'state-boundaries-line', type: 'line', source: 'state-boundaries',
+        paint: { 'line-color': '#00a8ff', 'line-width': 1.5, 'line-opacity': 0.55, 'line-dasharray': [2, 2] },
+      })
+      map.addLayer({
+        id: 'sa2-boundaries-fill', type: 'fill', source: 'sa2-boundaries',
+        paint: { 'fill-color': '#00ffcc', 'fill-opacity': 0.07 },
+      })
+      map.addLayer({
+        id: 'sa2-boundaries-line', type: 'line', source: 'sa2-boundaries',
+        paint: { 'line-color': '#00ffcc', 'line-width': 1, 'line-opacity': 0.65 },
+      })
+
+      map.on('click', 'state-boundaries-fill', e => {
+        const f = e.features[0]
+        if (!f) return
+        onSelectState({
+          code: f.properties.state_code_2021,
+          name: f.properties.state_name_2021,
+          areaSqKm: f.properties.area_albers_sqkm,
+          geometry: f.geometry,
+        })
+      })
+      map.on('mouseenter', 'state-boundaries-fill', () => { map.getCanvas().style.cursor = 'pointer' })
+      map.on('mouseleave', 'state-boundaries-fill', () => { map.getCanvas().style.cursor = '' })
+
+      map.on('click', 'sa2-boundaries-fill', e => {
+        const f = e.features[0]
+        if (!f) return
+        onSelectSA2({
+          code: f.properties.sa2_code_2021,
+          name: f.properties.sa2_name_2021,
+          areaSqKm: f.properties.area_albers_sqkm,
+          geometry: f.geometry,
+        })
+      })
+      map.on('mouseenter', 'sa2-boundaries-fill', () => { map.getCanvas().style.cursor = 'pointer' })
+      map.on('mouseleave', 'sa2-boundaries-fill', () => { map.getCanvas().style.cursor = '' })
+
+      fetch('/api/boundaries/states').then(r => r.json()).then(geojson => {
+        map.getSource('state-boundaries')?.setData(geojson)
+      }).catch(err => console.warn('[MAP] State boundaries fetch failed:', err))
 
       /* ── GL layers ── */
       const vis = key => LAYER_DEFAULTS[key] ? 'visible' : 'none'
@@ -666,6 +770,7 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
         <div className="map-corner br" />
 
         <MapOverlayControls layers={layers} onToggle={toggleLayer} />
+        <DrillPanel drill={drill} stats={drillStats} onNavigate={navigateDrill} />
       </div>
 
       <div className="map-panel">

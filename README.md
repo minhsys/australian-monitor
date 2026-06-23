@@ -1,19 +1,48 @@
 # 🇦🇺 Australia Intelligence Monitor
 
-Real-time Australian Geopolitical & Strategic Intelligence Dashboard.
+Real-time Australian geopolitical, infrastructure, and emergency intelligence dashboard. Live map layers, a composite national threat index, and an AI-generated news brief, all sourced from official and open data feeds — no mock data in production.
 
- Australia with Leaflet, Express, WebSocket, dual AI ( Gemini 2.5-flash), and Australian data sources.
+**Live demo:** https://australia-monitor-production.up.railway.app
 
 ---
 
-## Quick Start (local dev)
+## What it does
+
+### Live map (MapLibre GL)
+- **Flights** — live aircraft over Australian airspace (airplanes.live ADS-B feed)
+- **Ships** — AIS vessel positions (AISStream)
+- **Seismic** — recent earthquakes (Geoscience Australia)
+- **Fires** — bushfire hotspots (NASA FIRMS)
+- **Floods** — active flood warnings
+- **Road closures** — live NSW hazards/closures (TfNSW Open Data Hub)
+- **Emergency alerts** — incidents pulled directly from 7 state/territory agencies (RFS, CFA/EMV, QFES, CFS, DFES, TFS, ESA)
+- **Submarine cables** — Australia's internet cable landing points (TeleGeography)
+
+### Threat Level Index
+A composite score (GREEN → RED) computed from live seismic, weather, fire, flood, energy, and cyber signals — with a stated driver (e.g. "RED — driver: energy") rather than an opaque number.
+
+### Emergency impact estimation
+For active emergency alerts, a deterministic estimate of affected area and population (distance-to-capital-city banding × severity-scaled radius), plus an AI-generated one-line infrastructure/traffic narrative for higher-severity incidents. Cross-checked against EmergencyAPI.com's aggregation as a sanity diagnostic.
+
+### Financial & macro
+ASX 200, AUD/USD, gold, BTC/ETH (Yahoo Finance, RBA exchange rate RSS, CoinGecko), AEMO live energy grid (renewable mix, NEM spot prices), AEMO/gas system energy outage notices, port congestion (derived from AIS idle/anchored vessel density near major seaports), and ABS national indicators (unemployment, CPI, population).
+
+### Weather, vitals & travel
+Open-Meteo weather for 8 capital cities, fire danger ratings, reservoir levels, Great Barrier Reef sea surface temperature, air quality (OpenAQ), and live flight departure boards (AirLabs FIDS) for major airports.
+
+### AI news brief
+RSS aggregation across 16 Australian news feeds, summarized by a Gemini → GPT-4o → OpenRouter fallback chain into a running intelligence brief.
+
+---
+
+## Quick start (local dev)
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/australia-monitor.git
+git clone https://github.com/minhsys/australian-monitor.git
 cd australia-monitor
 npm install
 cp .env.example .env
-# Add your API keys to .env
+# Add your API keys to .env — see .env.example for what each one unlocks
 npm run dev
 # → React dev server: http://localhost:5173
 # → Express API:      http://localhost:3001
@@ -27,31 +56,29 @@ npm start
 # → http://localhost:3001
 ```
 
-## Deploy to Render.com
+## Deploy
 
+**Railway** (current host for the live demo):
+```bash
+railway login
+railway init
+railway up
+railway domain
+```
+Set the API keys from `.env.example` as Railway service variables. The Dockerfile installs full deps, runs `vite build`, then prunes dev dependencies for the runtime image.
+
+**Render.com** (`render.yaml` included):
 1. Push repo to GitHub
 2. New Web Service → Docker → connect repo
 3. Add env vars from `.env.example`
-4. Deploy — live URL in ~3 minutes
+4. Deploy
 
 ---
 
-## Build Phases
-
-| Phase | Status | Feature |
-|-------|--------|---------|
-| 1 | ✅ Done | Layout scaffold — Leaflet map, 3-column UI, mock data |
-| 2 | ✅ Done | Live map layers — OpenSky flights, AIS ships, Geoscience AU seismic, NASA FIRMS bushfire |
-| 3 | ✅ Done | Financial — Yahoo Finance, RBA XML, CoinGecko, NSW FuelCheck |
-| 4 | ✅ Done | Weather & FIDS — Open-Meteo, AirLabs flight board |
-| 5 | ✅ Done | AI News — GPT-4o + Gemini dual engine, RSS aggregator (16 feeds) |
-| 6 | ✅ Done | AEMO live energy grid — renewable % donut, fuel mix bars, NEM spot prices |
-| 7 | ✅ Done | Australian vitals — fire danger ratings, reservoir levels, GBR SST, air quality (OpenAQ) |
-| 8 | 📋 Planned | Pacific intelligence module |
-
 ## Stack
 
-- **Frontend**: React 18, Vite, Leaflet.js, Lucide Icons, Custom CSS
-- **Backend**: Node.js, Express, WebSocket (ws)
-- **AI**: GPT-4o + Gemini 2.5-flash (parallel race)
-- **Deploy**: Docker → Render.com
+- **Frontend**: React 19, Vite, MapLibre GL, Lucide Icons, custom CSS
+- **Backend**: Node.js, Express, WebSocket (`ws`) for live push updates
+- **AI**: Gemini 2.5-flash → GPT-4o → OpenRouter fallback chain
+- **Testing**: Vitest
+- **Deploy**: Docker → Railway / Render.com

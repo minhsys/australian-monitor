@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import Header       from './components/Header.jsx'
+import MobileNav    from './components/MobileNav.jsx'
 import LeftSidebar  from './components/LeftSidebar.jsx'
 import MapCenter    from './components/MapCenter.jsx'
 import RightSidebar from './components/RightSidebar.jsx'
@@ -25,6 +26,7 @@ export default function App() {
   const [emergencyAlerts, setEmergencyAlerts] = useState([])
   const [emergencyImpact, setEmergencyImpact] = useState(null)
   const [warningFocusSignal, setWarningFocusSignal] = useState(0)
+  const [mobilePanel, setMobilePanel] = useState('map')
   const wsRef = useRef(null)
 
   /* ── WebSocket connection for live data push ── */
@@ -125,11 +127,17 @@ export default function App() {
     try { await fetch('/api/force-poll', { method: 'POST' }) } catch {}
   }
 
+  const handleThreatClick = () => {
+    setMobilePanel('map')
+    setWarningFocusSignal(s => s + 1)
+  }
+
   return (
     <div className="app-shell">
-      <Header feedStats={feedStats} threatIndex={threatIndex} onThreatClick={() => setWarningFocusSignal(s => s + 1)} />
+      <Header feedStats={feedStats} threatIndex={threatIndex} onThreatClick={handleThreatClick} />
+      <MobileNav active={mobilePanel} onChange={setMobilePanel} />
 
-      <div className="body-grid">
+      <div className="body-grid" data-active-panel={mobilePanel}>
         <LeftSidebar feedStats={feedStats} onForcePoll={handleForcePoll} weather={weather} />
         <MapCenter
           newsItems={newsItems}
@@ -145,6 +153,7 @@ export default function App() {
           emergencyAlerts={emergencyAlerts}
           emergencyImpact={emergencyImpact}
           warningFocusSignal={warningFocusSignal}
+          isActive={mobilePanel === 'map'}
         />
         <RightSidebar financial={financial} energy={energy} absData={absData} vitals={vitals} />
       </div>

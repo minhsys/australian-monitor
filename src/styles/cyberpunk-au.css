@@ -33,8 +33,9 @@
   --font-ui:   'Exo 2', 'Rajdhani', sans-serif;
   --font-head: 'Rajdhani', 'Exo 2', sans-serif;
 
-  --header-h:  48px;
-  --ticker-h:  32px;
+  --header-h:     48px;
+  --ticker-h:     32px;
+  --mobile-nav-h: 38px;
   --left-w:    270px;
   --right-w:   400px;
   --radius:    4px;
@@ -63,6 +64,7 @@ body {
    ============================================================ */
 .app-shell {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: var(--header-h) 1fr var(--ticker-h);
   height: 100vh;
   overflow: hidden;
@@ -73,6 +75,7 @@ body {
   grid-template-columns: 1fr 45% 1fr;
   overflow: hidden;
   border-top: 1px solid var(--border);
+  min-width: 0;
 }
 
 /* ============================================================
@@ -175,6 +178,7 @@ body {
   background: var(--bg-sidebar);
   border-right: 1px solid var(--border);
   display: flex;
+  min-width: 0;
   flex-direction: column;
   overflow-y: auto;
 }
@@ -365,6 +369,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-width: 0;
   position: relative;
 }
 
@@ -795,6 +800,7 @@ body {
   background: var(--bg-sidebar);
   border-left: 1px solid var(--border);
   display: flex;
+  min-width: 0;
   flex-direction: column;
   overflow: hidden;
 }
@@ -1225,26 +1231,65 @@ body {
 }
 
 /* ============================================================
-   MOBILE LAYOUT — stack columns, trim header, allow scrolling
+   MOBILE LAYOUT — one panel full-height at a time, trim header
    ============================================================ */
+.mobile-nav { display: none; }
+
 @media (max-width: 768px) {
-  .body-grid {
-    grid-template-columns: 1fr;
-    grid-auto-rows: auto;
-    overflow-y: auto;
+  .app-shell {
+    grid-template-rows: var(--header-h) var(--mobile-nav-h) 1fr var(--ticker-h);
   }
 
-  .map-center  { order: 1; height: 65vh; }
-  .left-sidebar  { order: 2; max-height: 50vh; border-right: none; border-bottom: 1px solid var(--border); }
-  .right-sidebar { order: 3; max-height: 50vh; border-left: none; border-bottom: 1px solid var(--border); overflow-y: auto; }
+  .mobile-nav {
+    display: flex;
+    background: var(--bg-header);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .mobile-nav-btn {
+    flex: 1;
+    padding: 10px 6px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+  }
+  .mobile-nav-btn.active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); }
+
+  /* Only the active panel renders; each gets the full body height (single scroll context).
+     minmax(0, 1fr) — not bare 1fr — or the track inherits the widest descendant's
+     min-content (e.g. the 5 nowrap finance tabs) and blows out past the viewport. */
+  .body-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    overflow: hidden;
+  }
+
+  .map-center, .left-sidebar, .right-sidebar { display: none; max-height: none; border: none; }
+
+  .body-grid[data-active-panel="map"]   .map-center   { display: flex; }
+  .body-grid[data-active-panel="left"]  .left-sidebar  { display: flex; }
+  .body-grid[data-active-panel="right"] .right-sidebar { display: flex; }
 
   .map-panel { height: 220px; }
 
+  /* Guarantee the TV livestream gets real height — cap/scroll the weather grid instead of letting it win the flex fight */
+  .weather-grid { max-height: 160px; overflow-y: auto; }
+  .tv-stream-section { min-height: 200px; }
+
   .header { padding: 0 10px; gap: 8px; }
-  .header-title { font-size: 14px; }
+  .header-left { min-width: 0; flex: 1 1 auto; overflow: hidden; }
+  .header-title { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .header-subtitle { display: none; }
-  .header-right { gap: 10px; }
-  .header-right .header-stat:nth-child(1) { display: none; }
+  .header-right { gap: 8px; overflow-x: auto; scrollbar-width: none; }
+  .header-right::-webkit-scrollbar { display: none; }
+  .header-right .header-stat { flex-shrink: 0; }
+  .header-stat-decorative { display: none; }
 
   .news-panel-top { flex-wrap: wrap; }
 
@@ -1252,7 +1297,6 @@ body {
 }
 
 @media (max-width: 480px) {
-  .header-right .header-stat:nth-child(3) { display: none; }
   .map-overlay-panel { min-width: 160px; padding: 8px; }
   .overlay-label { font-size: 11.5px; }
 }

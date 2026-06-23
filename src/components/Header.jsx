@@ -51,13 +51,13 @@ export default function Header({ feedStats, threatIndex, onThreatClick }) {
         )}
 
         {/* OSINT Pulse */}
-        <div className="header-stat">
+        <div className="header-stat header-stat-decorative">
           <Globe size={11} />
           <span className="header-stat-label">STRATEGIC &amp; PACIFIC PULSE</span>
         </div>
 
         {/* Link status */}
-        <div className="header-stat">
+        <div className="header-stat header-stat-decorative">
           <span className="dot" />
           <Activity size={11} />
           <span className="header-stat-label">LINK {linkStatus}</span>

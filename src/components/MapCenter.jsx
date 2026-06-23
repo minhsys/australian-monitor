@@ -355,7 +355,7 @@ const GL_LAYERS = {
 }
 
 /* ── Component ── */
-export default function MapCenter({ newsItems, flights, ships, seismic, fires, floods, fids, aiBrief, threatIndex, roadClosures, emergencyAlerts, emergencyImpact, warningFocusSignal }) {
+export default function MapCenter({ newsItems, flights, ships, seismic, fires, floods, fids, aiBrief, threatIndex, roadClosures, emergencyAlerts, emergencyImpact, warningFocusSignal, isActive }) {
   const mapRef     = useRef(null)
   const markersRef = useRef({})
   const dataRef    = useRef({ flights: [], ships: [], seismic: [], fires: [], floods: [], roadClosures: [], emergencyAlerts: [] })
@@ -367,6 +367,12 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
   useEffect(() => {
     if (warningFocusSignal) setActiveTab('warning')
   }, [warningFocusSignal])
+
+  /* On mobile the map is display:none while another panel is active — MapLibre
+     needs a resize() nudge when it becomes visible again so the canvas isn't stale. */
+  useEffect(() => {
+    if (isActive) mapRef.current?.resize()
+  }, [isActive])
 
   /* ── Init map once ── */
   useEffect(() => {

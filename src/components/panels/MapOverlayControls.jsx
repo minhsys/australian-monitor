@@ -13,10 +13,11 @@ const OVERLAY_ITEMS = [
   { key: 'fires',             icon: '🔥', label: 'Bushfire Hotspots (NASA)' },
   { key: 'floods',            icon: '🌊', label: 'Flood Warnings (BOM)' },
   { key: 'roadClosures',      icon: '🚧', label: 'Road Closures (NSW)' },
+  { key: 'emergencyAlerts',   icon: '🚨', label: 'Emergency Incidents (State Agencies)' },
 ]
 
 export default function MapOverlayControls({ layers, onToggle }) {
-  const [isMinimized, setIsMinimized] = useState(false)
+  const [isMinimized, setIsMinimized] = useState(true)
 
   return (
     <div className={`map-overlay-panel ${isMinimized ? 'minimized' : ''}`}>

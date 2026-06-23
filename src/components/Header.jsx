@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Activity, Wifi, Rss, Globe } from 'lucide-react'
 
-export default function Header({ feedStats, threatIndex }) {
+export default function Header({ feedStats, threatIndex, onThreatClick }) {
   const [time, setTime]           = useState(new Date())
   const [linkStatus, setLinkStatus] = useState('ONLINE')
 
@@ -33,7 +33,15 @@ export default function Header({ feedStats, threatIndex }) {
       <div className="header-right">
         {/* Threat Level Index */}
         {threatIndex?.overall && (
-          <div className="header-stat threat-badge" style={{ color: threatIndex.overall.color }}>
+          <div
+            className="header-stat threat-badge"
+            style={{ color: threatIndex.overall.color, cursor: 'pointer' }}
+            onClick={onThreatClick}
+            role="button"
+            tabIndex={0}
+            title="Jump to Early Warning & Policy"
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onThreatClick?.() }}
+          >
             <span className="dot" style={{ background: threatIndex.overall.color, boxShadow: `0 0 6px ${threatIndex.overall.color}` }} />
             <Activity size={11} />
             <span className="header-stat-label" style={{ color: threatIndex.overall.color }}>

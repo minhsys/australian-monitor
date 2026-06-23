@@ -21,6 +21,10 @@ import { startVitalsPoller }                          from './server/routes/vita
 import { startThreatIndexPoller }                     from './server/routes/threatIndex.js'
 import { startRoadClosuresPoller }                    from './server/routes/roadClosures.js'
 import { startPortCongestionPoller }                  from './server/routes/portCongestion.js'
+import { startEnergyOutagesPoller }                   from './server/routes/energyOutages.js'
+import { startEmergencyAlertsPoller }                 from './server/routes/emergencyAlerts.js'
+import { startEmergencyImpactPoller }                 from './server/routes/emergencyImpact.js'
+import { startEmergencyCrossCheckPoller }             from './server/routes/emergencyCrossCheck.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app       = express()
@@ -116,6 +120,14 @@ wss.on('connection', (ws) => {
     ws.send(JSON.stringify({ type: 'road_closures', payload: store.roadClosures }))
   if (store.portCongestion?.length)
     ws.send(JSON.stringify({ type: 'port_congestion', payload: store.portCongestion }))
+  if (store.energyOutages)
+    ws.send(JSON.stringify({ type: 'energy_outages', payload: store.energyOutages }))
+  if (store.emergencyAlerts?.length)
+    ws.send(JSON.stringify({ type: 'emergency_alerts', payload: store.emergencyAlerts }))
+  if (store.emergencyImpact)
+    ws.send(JSON.stringify({ type: 'emergency_impact', payload: store.emergencyImpact }))
+  if (store.emergencyCrossCheck)
+    ws.send(JSON.stringify({ type: 'emergency_cross_check', payload: store.emergencyCrossCheck }))
 })
 
 /* ─────────────────────────────────────────────
@@ -195,6 +207,22 @@ app.get('/api/road-closures', noCache, (_, res) => {
 
 app.get('/api/port-congestion', noCache, (_, res) => {
   res.json(store.portCongestion ?? [])
+})
+
+app.get('/api/energy-outages', noCache, (_, res) => {
+  res.json(store.energyOutages ?? { electricity: [], gas: [] })
+})
+
+app.get('/api/emergency-alerts', noCache, (_, res) => {
+  res.json(store.emergencyAlerts ?? [])
+})
+
+app.get('/api/emergency-impact', noCache, (_, res) => {
+  res.json(store.emergencyImpact ?? null)
+})
+
+app.get('/api/emergency-cross-check', noCache, (_, res) => {
+  res.json(store.emergencyCrossCheck ?? null)
 })
 
 app.get('/api/cables', async (_, res) => {
@@ -381,6 +409,18 @@ async function bootstrap() {
 
   // Port congestion — idle/anchored vessel counts near major seaports, derived from existing AIS ship data
   startPortCongestionPoller(broadcast, store)
+
+  // Energy outages — AEMO electricity market notices (LOR/power system events) + east coast gas system notices
+  startEnergyOutagesPoller(broadcast, store)
+
+  // Emergency alerts — direct, official, per-state/territory agency incident feeds (RFS, CFA/EMV, QFES, CFS, DFES, TFS, ESA)
+  startEmergencyAlertsPoller(broadcast, store)
+
+  // Emergency impact — deterministic area/population estimate + AI narrative for severity>=2 alerts, independent slow poll
+  startEmergencyImpactPoller(broadcast, store)
+
+  // Emergency cross-check — validates the 7 direct agency feeds against EmergencyAPI.com's aggregation (diagnostic only)
+  startEmergencyCrossCheckPoller(broadcast, store)
 
   // ✅ Only NOW open the port
   server.listen(PORT, () => {

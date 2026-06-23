@@ -18,6 +18,7 @@ const SEVERE_WEATHER_RE  = /severe|cyclone|tsunami|extreme/i
 const EMERGENCY_PHASE_RE = /emergency|warning/i
 const MAJOR_FLOOD_RE     = /major|emergency/i
 const CRITICAL_CYBER_RE  = /critical vulnerability|active exploitation|ransomware|zero-day|breach/i
+const FUEL_SHORTAGE_RE   = /fuel shortage|petrol shortage|diesel shortage|fuel supply (disrupt|short)|refinery (shutdown|outage|fire)|rolling blackout|load shedding|blackout (hits|leaves|across)/i
 
 function levelInfo(level) {
   return LEVELS[Math.max(0, Math.min(LEVELS.length - 1, level))]
@@ -152,6 +153,69 @@ function scoreInfrastructure(roadClosures = [], portCongestion = []) {
   }
 }
 
+function scoreEnergy(electricityNotices = [], gasNotices = [], news = []) {
+  const now = Date.now()
+
+  const activeGas   = gasNotices.filter(n => !n.end || new Date(n.end).getTime() > now)
+  const criticalGas = activeGas.filter(n => n.critical)
+
+  const fuelNews = news.filter(n => now - (n.timestamp || 0) < RECENT_MS && FUEL_SHORTAGE_RE.test(n.text || ''))
+
+  const noticeText = n => `${n.type ?? ''} ${n.label ?? ''}`
+
+  let level = 0
+  if (electricityNotices.length) level = 2
+  if (electricityNotices.some(n => /LOR ?3|MARKET SUSPENSION/i.test(noticeText(n)))) level = Math.max(level, 4)
+  else if (electricityNotices.some(n => /LOR ?2/i.test(noticeText(n))))             level = Math.max(level, 3)
+
+  if (activeGas.length)   level = Math.max(level, 1)
+  if (criticalGas.length) level = Math.max(level, 3)
+
+  if (fuelNews.length)      level = Math.max(level, 1)
+  if (fuelNews.length >= 3) level = Math.max(level, 2)
+
+  const summaryParts = []
+  if (electricityNotices.length) summaryParts.push(`${electricityNotices.length} AEMO electricity supply-risk notice(s)`)
+  if (activeGas.length)          summaryParts.push(`${activeGas.length} active east coast gas notice(s)`)
+  if (fuelNews.length)           summaryParts.push(`${fuelNews.length} fuel/blackout news item(s)`)
+
+  const sources = [
+    ...electricityNotices.slice(0, 3).map(n => ({ type: 'energy_electricity', id: n.id, time: n.issued, label: `${n.type}: ${n.label}` })),
+    ...activeGas.slice(0, 2).map(n => ({ type: 'energy_gas', id: n.id, time: n.start, label: n.message, url: n.url })),
+    ...fuelNews.slice(0, 2).map(n => ({ type: 'energy_news', id: n.id, time: n.timestamp, label: n.text, url: n.url })),
+  ].slice(0, 5)
+
+  return {
+    level,
+    summary: summaryParts.length ? summaryParts.join(' · ') : 'No active electricity/gas supply-risk notices',
+    sources,
+  }
+}
+
+function scoreEmergencyAlerts(alerts = []) {
+  const bySeverityDesc    = [...alerts].sort((a, b) => b.severity - a.severity)
+  const emergencyWarnings = alerts.filter(a => a.severity === 3)
+  const watchAndAct       = alerts.filter(a => a.severity === 2)
+
+  let level = alerts.length ? 1 : 0
+  if (watchAndAct.length)       level = Math.max(level, 2)
+  if (emergencyWarnings.length) level = Math.max(level, 3)
+  if (alerts.length >= 20)      level = Math.max(level, 2)
+
+  const summaryParts = []
+  if (alerts.length)            summaryParts.push(`${alerts.length} active incident(s) across state agencies`)
+  if (watchAndAct.length)       summaryParts.push(`${watchAndAct.length} Watch and Act`)
+  if (emergencyWarnings.length) summaryParts.push(`${emergencyWarnings.length} Emergency Warning(s)`)
+
+  return {
+    level,
+    summary: summaryParts.length ? summaryParts.join(' · ') : 'No active state emergency-agency incidents',
+    sources: bySeverityDesc.slice(0, 5).map(a => ({
+      type: 'emergency_alert', id: a.id, time: a.issued, label: `${a.state} ${a.agency}: ${a.title}`, url: a.url,
+    })),
+  }
+}
+
 export function computeThreatIndex(store) {
   const categories = {
     seismic:        scoreSeismic(store.seismic),
@@ -160,6 +224,8 @@ export function computeThreatIndex(store) {
     flood:          scoreFlood(store.floods),
     cyber:          scoreCyber(store.news),
     infrastructure: scoreInfrastructure(store.roadClosures, store.portCongestion),
+    energy:         scoreEnergy(store.energyOutages?.electricity, store.energyOutages?.gas, store.news),
+    emergencyAlerts: scoreEmergencyAlerts(store.emergencyAlerts),
   }
 
   const overallLevel = Math.max(0, ...Object.values(categories).map(c => c.level))

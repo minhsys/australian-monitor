@@ -148,6 +148,7 @@ const LAYER_DEFAULTS = {
   fires:            true,
   floods:           true,
   roadClosures:     false,
+  emergencyAlerts:  true,
 }
 
 /* ── MapLibre style: CartoDB Dark raster, no API key required ── */
@@ -209,6 +210,15 @@ const roadClosuresFC = hazards => toFC((hazards || []).map(h => ({
   properties: {
     title: h.title || '', category: h.category || '', road: h.road || '',
     suburb: h.suburb || '', advice: h.advice || '', closure: h.closure ? 1 : 0,
+  },
+})))
+
+const emergencyAlertsFC = alerts => toFC((alerts || []).map(a => ({
+  type: 'Feature',
+  geometry: { type: 'Point', coordinates: [a.lon, a.lat] },
+  properties: {
+    title: a.title || '', state: a.state || '', agency: a.agency || '',
+    category: a.category || 'other', status: a.status || '', severity: a.severity ?? 0,
   },
 })))
 
@@ -341,17 +351,22 @@ const GL_LAYERS = {
   trains:          ['trains-layer'],
   submarineCables: ['cables-layer', 'cable-landings-layer'],
   roadClosures:    ['road-closures-layer'],
+  emergencyAlerts: ['emergency-alerts-layer'],
 }
 
 /* ── Component ── */
-export default function MapCenter({ newsItems, flights, ships, seismic, fires, floods, fids, aiBrief, threatIndex, roadClosures }) {
+export default function MapCenter({ newsItems, flights, ships, seismic, fires, floods, fids, aiBrief, threatIndex, roadClosures, emergencyAlerts, emergencyImpact, warningFocusSignal }) {
   const mapRef     = useRef(null)
   const markersRef = useRef({})
-  const dataRef    = useRef({ flights: [], ships: [], seismic: [], fires: [], floods: [], roadClosures: [] })
+  const dataRef    = useRef({ flights: [], ships: [], seismic: [], fires: [], floods: [], roadClosures: [], emergencyAlerts: [] })
   const cablesRef  = useRef(null)
 
   const [activeTab, setActiveTab] = useState('news')
   const [layers, setLayers]       = useState(LAYER_DEFAULTS)
+
+  useEffect(() => {
+    if (warningFocusSignal) setActiveTab('warning')
+  }, [warningFocusSignal])
 
   /* ── Init map once ── */
   useEffect(() => {
@@ -388,6 +403,7 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
         ['fires',          firesFC(dataRef.current.fires)],
         ['floods',         floodsFC(dataRef.current.floods)],
         ['road-closures',  roadClosuresFC(dataRef.current.roadClosures)],
+        ['emergency-alerts', emergencyAlertsFC(dataRef.current.emergencyAlerts)],
         ['rails',          railsFC()],
         ['cables',         cablesRef.current?.cables   ?? EMPTY_FC],
         ['cable-landings', cablesRef.current?.landings ?? EMPTY_FC],
@@ -495,6 +511,20 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
         p => `🚧 <b>${p.title}</b><br/>${p.road ? `Road: ${p.road}<br/>` : ''}${p.suburb ? `Suburb: ${p.suburb}<br/>` : ''}${p.closure ? '<b style="color:#ff3d6b">CLOSED</b>' : p.category}${p.advice ? `<br/>${p.advice}` : ''}`)
 
       map.addLayer({
+        id: 'emergency-alerts-layer', type: 'circle', source: 'emergency-alerts',
+        layout: { visibility: vis('emergencyAlerts') },
+        paint: {
+          'circle-radius':       ['step', ['get', 'severity'], 5, 1, 6, 2, 8, 3, 10],
+          'circle-color':        ['step', ['get', 'severity'], '#888888', 1, '#f5c842', 2, '#ff8c00', 3, '#ff3d6b'],
+          'circle-stroke-width': 1.5,
+          'circle-stroke-color': 'rgba(255,255,255,0.4)',
+          'circle-opacity':      0.85,
+        },
+      })
+      addClickPopup(map, 'emergency-alerts-layer',
+        p => `🚨 <b>${p.title}</b><br/>${p.state} ${p.agency}${p.status ? ` — ${p.status}` : ''}<br/>Category: ${p.category}`)
+
+      map.addLayer({
         id: 'trains-layer', type: 'line', source: 'rails',
         layout: { visibility: vis('trains'), 'line-join': 'round', 'line-cap': 'round' },
         paint: {
@@ -581,6 +611,11 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
     mapRef.current?.getSource('road-closures')?.setData(roadClosuresFC(roadClosures))
   }, [roadClosures])
 
+  useEffect(() => {
+    dataRef.current.emergencyAlerts = emergencyAlerts || []
+    mapRef.current?.getSource('emergency-alerts')?.setData(emergencyAlertsFC(emergencyAlerts))
+  }, [emergencyAlerts])
+
   /* ── Layer toggle ── */
   const toggleLayer = key => {
     setLayers(prev => {
@@ -631,7 +666,7 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
         <div className="map-panel-content">
           {activeTab === 'news'      && <NewsPanel newsItems={newsItems} aiBrief={aiBrief} />}
           {activeTab === 'transport' && <TransportPanel flights={flights} ships={ships} fids={fids} />}
-          {activeTab === 'warning'   && <WarningPanel threatIndex={threatIndex} />}
+          {activeTab === 'warning'   && <WarningPanel threatIndex={threatIndex} emergencyImpact={emergencyImpact} />}
         </div>
       </div>
     </div>
@@ -693,6 +728,7 @@ const THREAT_CATEGORY_META = {
   flood:          { icon: '🌊', label: 'FLOOD' },
   cyber:          { icon: '🛡',  label: 'CYBER ADVISORY' },
   infrastructure: { icon: '🚧', label: 'INFRASTRUCTURE' },
+  energy:         { icon: '⚡', label: 'ENERGY SUPPLY' },
 }
 
 function formatSourceTime(time) {
@@ -701,7 +737,7 @@ function formatSourceTime(time) {
   return isNaN(d.getTime()) ? '' : d.toLocaleString('en-AU', { hour12: false, day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
-function WarningPanel({ threatIndex }) {
+function WarningPanel({ threatIndex, emergencyImpact }) {
   const [expanded, setExpanded] = useState(null)
 
   if (!threatIndex) {
@@ -735,9 +771,13 @@ function WarningPanel({ threatIndex }) {
       </div>
 
       {Object.entries(categories).map(([key, cat]) => {
-        const meta     = THREAT_CATEGORY_META[key] ?? { icon: '•', label: key.toUpperCase() }
-        const color    = ['#00e676', '#00a8ff', '#f5c842', '#ff8c00', '#ff3d6b'][cat.level] ?? '#4a6080'
-        const isOpen   = expanded === key
+        const meta      = THREAT_CATEGORY_META[key] ?? { icon: '•', label: key.toUpperCase() }
+        const color     = ['#00e676', '#00a8ff', '#f5c842', '#ff8c00', '#ff3d6b'][cat.level] ?? '#4a6080'
+        const isOpen    = expanded === key
+        const aggregate = key === 'emergencyAlerts' ? emergencyImpact?.aggregate : null
+        const narrativeById = key === 'emergencyAlerts'
+          ? Object.fromEntries((emergencyImpact?.perIncident ?? []).map(p => [p.id, p]))
+          : {}
 
         return (
           <div key={key} style={{ marginBottom: 4, border: '1px solid rgba(255,255,255,0.06)', borderRadius: 4 }}>
@@ -748,7 +788,10 @@ function WarningPanel({ threatIndex }) {
               <span style={{ fontSize: 14, flexShrink: 0 }}>{meta.icon}</span>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 12.5, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{meta.label}</div>
-                <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{cat.summary}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
+                  {cat.summary}
+                  {aggregate && ` · ~${aggregate.totalPeopleEstimate.toLocaleString('en-AU')} people in affected areas (approx.)`}
+                </div>
               </div>
               <span style={{
                 fontSize: 10, fontFamily: 'var(--font-mono)', padding: '2px 6px', borderRadius: 3,
@@ -763,15 +806,26 @@ function WarningPanel({ threatIndex }) {
 
             {isOpen && cat.sources.length > 0 && (
               <div style={{ padding: '2px 8px 6px 30px', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-                {cat.sources.map((s, i) => (
-                  s.url
-                    ? <a key={i} href={s.url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', fontSize: 11.5, color: 'var(--text-muted)', padding: '3px 0', textDecoration: 'none' }}>
-                        — {s.label} {formatSourceTime(s.time) && <span style={{ color: 'var(--text-dim)' }}>({formatSourceTime(s.time)})</span>}
-                      </a>
-                    : <div key={i} style={{ fontSize: 11.5, color: 'var(--text-muted)', padding: '3px 0' }}>
-                        — {s.label} {formatSourceTime(s.time) && <span style={{ color: 'var(--text-dim)' }}>({formatSourceTime(s.time)})</span>}
-                      </div>
-                ))}
+                {cat.sources.map((s, i) => {
+                  const narrative = narrativeById[s.id]?.narrative
+                  return (
+                    <div key={i}>
+                      {s.url
+                        ? <a href={s.url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', fontSize: 11.5, color: 'var(--text-muted)', padding: '3px 0', textDecoration: 'none' }}>
+                            — {s.label} {formatSourceTime(s.time) && <span style={{ color: 'var(--text-dim)' }}>({formatSourceTime(s.time)})</span>}
+                          </a>
+                        : <div style={{ fontSize: 11.5, color: 'var(--text-muted)', padding: '3px 0' }}>
+                            — {s.label} {formatSourceTime(s.time) && <span style={{ color: 'var(--text-dim)' }}>({formatSourceTime(s.time)})</span>}
+                          </div>
+                      }
+                      {narrative && (
+                        <div style={{ fontSize: 11, color: 'var(--text-dim)', padding: '0 0 4px 14px', fontStyle: 'italic' }}>
+                          <span style={{ color: 'var(--accent-cyan)', fontStyle: 'normal' }}>[AI estimate]</span> {narrative}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>

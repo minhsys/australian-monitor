@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Activity, Wifi, Rss, Globe } from 'lucide-react'
+import { Activity, Wifi, Rss } from 'lucide-react'
 
 export default function Header({ feedStats, threatIndex, onThreatClick }) {
   const [time, setTime]           = useState(new Date())
@@ -22,9 +22,9 @@ export default function Header({ feedStats, threatIndex, onThreatClick }) {
       <div className="header-left">
         <div className="header-logo">🇦🇺</div>
         <div>
-          <div className="header-title">Australia Intelligence Monitor</div>
+          <div className="header-title">AUSTRALIA MONITOR</div>
           <div className="header-subtitle">
-            Real-time Geopolitical &amp; Strategic Intelligence Aggregator
+            Real-time Observability
           </div>
         </div>
       </div>
@@ -49,12 +49,6 @@ export default function Header({ feedStats, threatIndex, onThreatClick }) {
             </span>
           </div>
         )}
-
-        {/* OSINT Pulse */}
-        <div className="header-stat header-stat-decorative">
-          <Globe size={11} />
-          <span className="header-stat-label">STRATEGIC &amp; PACIFIC PULSE</span>
-        </div>
 
         {/* Link status */}
         <div className="header-stat header-stat-decorative">

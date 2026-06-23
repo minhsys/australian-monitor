@@ -135,11 +135,11 @@ const FINANCE_HUBS = [
 const TABS = [
   { id: 'news',      label: '📰 NEWS & AI BRIEF' },
   { id: 'transport', label: '✈ TRANSPORT & MARITIME' },
-  { id: 'warning',   label: '⚡ EARLY WARNING & POLICY' },
+  { id: 'warning',   label: '⚡ EARLY WARNING' },
 ]
 
 const LAYER_DEFAULTS = {
-  satellite:        false,
+  satellite:        true,
   liveFlights:      true,
   trains:           false,
   shipping:         true,
@@ -179,7 +179,7 @@ const MAP_STYLE = {
   },
   layers: [
     { id: 'carto-dark', type: 'raster', source: 'carto' },
-    { id: 'satellite-layer', type: 'raster', source: 'satellite', layout: { visibility: 'none' } },
+    { id: 'satellite-layer', type: 'raster', source: 'satellite', layout: { visibility: 'visible' } },
   ],
 }
 
@@ -401,7 +401,7 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
   const navigateDrill = (level) => {
     if (level === 'country') {
       setDrill({ level: 'country', state: null, sa2: null })
-      mapRef.current?.flyTo({ center: [134, -27], zoom: 4, duration: 800 })
+      mapRef.current?.flyTo({ center: [145, -31], zoom: 2.4, duration: 800 })
     } else if (level === 'state') {
       setDrill(prev => ({ ...prev, level: 'state', sa2: null }))
       if (drill.state) {
@@ -472,8 +472,8 @@ export default function MapCenter({ newsItems, flights, ships, seismic, fires, f
     const map = new maplibregl.Map({
       container: 'au-map',
       style:     MAP_STYLE,
-      center:    [134, -27],
-      zoom:      4,
+      center:    [145, -31],
+      zoom:      2.4,
       attributionControl: true,
     })
 

@@ -14,7 +14,7 @@ function toEmbedUrl(raw) {
   return m ? `https://www.youtube.com/embed/${m[1]}?autoplay=1&mute=1` : raw.trim()
 }
 
-export default function LeftSidebar({ feedStats, onForcePoll, weather: weatherProp }) {
+export default function LeftSidebar({ onForcePoll, weather: weatherProp }) {
   const [polling,    setPolling]    = useState(false)
   const [weather,    setWeather]    = useState(weatherProp ?? [])
   const [channels, setChannels] = useState(() => {
@@ -96,18 +96,6 @@ export default function LeftSidebar({ feedStats, onForcePoll, weather: weatherPr
           FORCE POLL
         </button>
 
-        <div className="feed-stats">
-          <div className="feed-stat-card">
-            <div className="feed-stat-value">{feedStats?.totalFeeds ?? 400}</div>
-            <div className="feed-stat-label">Total Feeds</div>
-          </div>
-          <div className="feed-stat-card sources">
-            <div className="feed-stat-value">
-              {feedStats?.online ?? 12}/{feedStats?.total ?? 16}
-            </div>
-            <div className="feed-stat-label">Sources Online</div>
-          </div>
-        </div>
       </div>
 
       {/* ── Weather Grid — 8 cities ── */}

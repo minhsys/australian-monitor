@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Layers, Minus, Plus } from 'lucide-react'
 
 const OVERLAY_ITEMS = [
+  { key: 'satellite',         icon: '🛰',  label: 'Satellite Imagery' },
   { key: 'liveFlights',       icon: '✈',  label: 'Live Flights (Realtime)' },
   { key: 'shipping',          icon: '🚢', label: 'Shipping Traffic (AIS)' },
   { key: 'seismic',           icon: '📡', label: 'Seismic (GA + USGS)' },

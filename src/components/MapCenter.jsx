@@ -136,6 +136,7 @@ const TABS = [
 ]
 
 const LAYER_DEFAULTS = {
+  satellite:        false,
   liveFlights:      true,
   trains:           false,
   shipping:         true,
@@ -151,7 +152,7 @@ const LAYER_DEFAULTS = {
   emergencyAlerts:  true,
 }
 
-/* ── MapLibre style: CartoDB Dark raster, no API key required ── */
+/* ── MapLibre style: CartoDB Dark raster (base) + Esri World Imagery (toggleable satellite), no API key required ── */
 const MAP_STYLE = {
   version: 8,
   sources: {
@@ -165,8 +166,18 @@ const MAP_STYLE = {
       tileSize: 512,
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OSM</a> © <a href="https://carto.com/">CARTO</a>',
     },
+    satellite: {
+      type: 'raster',
+      // Esri ArcGIS tile path is {level}/{row}/{col} = {z}/{y}/{x}, not the usual {z}/{x}/{y}.
+      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+      tileSize: 256,
+      attribution: 'Imagery © <a href="https://www.esri.com/">Esri</a>',
+    },
   },
-  layers: [{ id: 'carto-dark', type: 'raster', source: 'carto' }],
+  layers: [
+    { id: 'carto-dark', type: 'raster', source: 'carto' },
+    { id: 'satellite-layer', type: 'raster', source: 'satellite', layout: { visibility: 'none' } },
+  ],
 }
 
 /* ── GeoJSON converters (MapLibre coords are [lng, lat]) ── */
@@ -343,6 +354,7 @@ function loadSvgImage(svgStr, size = 24) {
 
 /* ── Which toggle keys map to GL layer ids ── */
 const GL_LAYERS = {
+  satellite:       ['satellite-layer'],
   liveFlights:     ['flights-layer'],
   shipping:        ['ships-layer'],
   seismic:         ['seismic-layer'],

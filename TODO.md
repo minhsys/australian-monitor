@@ -6,6 +6,18 @@ _Last updated: 2026-06-23_
 
 ## 🟢 In progress — pick up next session
 
+- [ ] **Drill-down capability (national → state → suburb) — Phase 1 shipped (State → SA2), Phase 2/3 open.**
+
+  Goal (from brainstorm): a "3 clicks from country to block" experience for a national-leader-style demo/pitch. The original framing — exact ambulance counts at city-block level — isn't buildable: no Australian ambulance service publishes fleet/availability data publicly, same class of gap as the DNSP outage maps and Pillar 2 EOC data noted below. Reframed (with sign-off) as: real ABS boundary drill-down + real live signals filtered to whatever's selected, never fabricated numbers.
+
+  ✅ **Phase 1 shipped**: `server/routes/boundaries.js` proxies ABS's free ASGS2021 GeoJSON service (no API key, CC BY 4.0, confirmed live — and CORS-blocked, so it must stay server-side, not called from the browser) for State and SA2 (suburb) boundaries, cached in memory. `MapCenter.jsx` renders them as clickable fill/line layers: click a state to zoom in + load its SA2 suburbs, click a suburb to zoom further. `DrillPanel.jsx` shows a breadcrumb (click any level to go back) plus the boundary's real area (km², from ABS) and live counts of emergency incidents/road closures/fires/floods falling inside it, via a new point-in-polygon helper (`src/utils/geo.js`). Verified end-to-end with a headless browser this session (state click → suburb click → breadcrumb reset, all confirmed with real numbers, not mocked).
+
+  ⬜ **Phase 2 (not built)**: true block-level (SA1, ~200–800 people — the actual "block" granularity ABS offers) as a third click; a public hospital-location dataset (data.gov.au has one) for an honest "nearest emergency facility" data point instead of the impossible ambulance-count ask; polish the zoom/transition animation for demo smoothness.
+
+  ⬜ **Phase 3 (optional, unresearched)**: whether any state health department publishes ED wait-time/ambulance-ramping data publicly as a coarser but real proxy for "emergency capacity." Skip rather than fabricate if nothing real turns up.
+
+  **Known gaps in Phase 1**: no automated tests yet for `boundaries.js` or `geo.js`. Stat counts can read oddly for very large/sparse SA2s (e.g. "Outback" in SA covers >500,000km² with near-zero signal density) — fine for a demo, but Phase 2's SA1 granularity would make dense urban areas feel more meaningful.
+
 - [ ] **#3 Incident Impact Assessment (area + people affected) — first slice shipped (emergencyAlerts only), other 7 categories still open.**
 
   Goal: every incident surfaced in the Threat Index (energy outage, road closure, port congestion, flood, fire, etc.) should report an estimated **impacted area** and **number of people affected**, not just a severity level — e.g. "LOR2 in SA Region — ~1.8M people in at-risk area" instead of just "ORANGE."
@@ -43,7 +55,8 @@ _Last updated: 2026-06-23_
 - [ ] **Register a free TfNSW Open Data Hub API key** and set `TRANSPORT_NSW_KEY` in `.env`.
   Sign up at https://opendata.transport.nsw.gov.au → My Account → Applications → create one → API Management → add "Live Traffic Hazards" → copy the key.
   Without this, the Road Closures map layer stays empty (fails silently, just logs a warning server-side).
-- [ ] **Rotate your OpenRouter API key.** It was pasted in plaintext in this chat early in the session (low risk — free tier, no billing exposure — but still sitting in conversation history). Regenerate in the OpenRouter dashboard and update `OPENROUTER_KEY` in `.env`.
+- [ ] **Rotate your OpenRouter API key.** It was pasted in plaintext in this chat early in the session (low risk — free tier, no billing exposure — but still sitting in conversation history). Regenerate in the OpenRouter dashboard and update `OPENROUTER_KEY` in `.env`. (Checked 2026-06-23: `OPENROUTER_KEY` is set/non-empty in `.env`, but a value's presence doesn't confirm it's the *new* rotated one — please confirm directly.)
+- [ ] **Street View, if you still want it.** Confirmed this session it doesn't need a map-engine migration — keep the main map on MapLibre/CartoDB and add a Street View panel/modal alongside it. Needs a Google Cloud account + Maps JavaScript API enabled + billing set up (Google gives $200/month free credit, same friction level as the TfNSW/OpenRouter keys above). Once you have a key, tell me and I'll wire in the panel.
 
 ## 🟡 Known gaps, not urgent
 
@@ -77,3 +90,5 @@ From the pillar review — ✅ done, ⬜ not started:
 - BOM's official water data API (SOS2/XML) is explicitly "not near-real-time" and complex — same reason fire-danger ratings already fall back to a seasonal guess.
 - Port congestion thresholds (`portCongestion.js`) are first-pass guesses, not calibrated against real port traffic: 20km radius, level escalates at 1/3/6/10 idle (anchored/moored) vessels. Revisit if congestion levels look obviously wrong once live AIS data is observed over a few days — e.g. some bulk ports (Port Hedland, Hay Point) routinely queue more ships than container ports, so a flat threshold may need to be per-port.
 - AEMO Market Notice files always set `Notice Type ID` to a generic bucket (e.g. "RESERVE NOTICE" covers LOR1/2/3 alike) — the actual severity (which LOR level, market suspension, etc.) only shows up in the free-text `Reason` narrative, not a clean enum. `scoreEnergy()` in `threatIndex.js` regex-matches the combined type+reason text for this reason — same pattern as the existing cyber-news classifier. Confirmed working against a live LOR3 (SA) notice during this session, correctly drove overall index to RED.
+- **CSS Grid "blowout" footgun** (found fixing the mobile layout): a track sized just `1fr` — or an *implicit* column on a container with no `grid-template-columns` at all — inherits its automatic minimum size from its widest descendant's min-content. Concretely: 5 nowrap finance tabs forced a 390px-wide mobile container to internally compute as 605px, silently clipped by `overflow:hidden` rather than erroring or scrolling. Fix is `minmax(0, 1fr)` at *every* nested grid level — both `app-shell` and `body-grid` needed it, fixing only one wasn't enough. If the desktop 3-column layout (`1fr 45% 1fr`) is ever squeezed very narrow (small laptop window), the same bug class could reappear there — it currently only has the fix on mobile's single-column override.
+- **Test coverage status**: `financial.js`, `portCongestion.js`, and all of `threatIndex.js`'s categories now have tests (89 total, up from 33). ~19 of 26 server routes are still untested — mostly thin "fetch external API → return JSON" routes (weather, fids, seismic, etc.) with low value-per-test. If resuming this, `energy.js`/`energyOutages.js`/`abs.js` (real parsing logic) are better next candidates than the thin proxies.

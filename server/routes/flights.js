@@ -1,77 +1,72 @@
 import fetch from 'node-fetch'
 
-const AU_BBOX = { lamin: -44, lamax: -10, lomin: 112, lomax: 154 }
-const POLL_MS = 120_000  // 2 min → 720 req/day, well within 4000 credit limit
-const OPENSKY_URL =
-  `https://opensky-network.org/api/states/all` +
-  `?lamin=${AU_BBOX.lamin}&lamax=${AU_BBOX.lamax}` +
-  `&lomin=${AU_BBOX.lomin}&lomax=${AU_BBOX.lomax}`
+const POLL_MS    = 120_000  // 2 min
+const RADIUS_NM  = 250      // airplanes.live point endpoint hard cap
+const FT_TO_M    = 0.3048
+const KT_TO_MS   = 0.514444
+const USER_AGENT = 'australia-intelligence-monitor (https://github.com/minhsys/australian-monitor)'
 
-const TOKEN_URL =
-  'https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token'
+// Regional centers spaced to keep overlapping 250nm coverage across the AU mainland + Tasmania
+const CENTERS = [
+  { name: 'PER', lat: -31.95, lon: 115.86 },
+  { name: 'ADL', lat: -34.93, lon: 138.60 },
+  { name: 'DRW', lat: -12.46, lon: 130.84 },
+  { name: 'ASP', lat: -23.70, lon: 133.88 },
+  { name: 'SYD', lat: -33.87, lon: 151.21 },
+  { name: 'MEL', lat: -37.81, lon: 144.96 },
+  { name: 'BNE', lat: -27.47, lon: 153.02 },
+  { name: 'CNS', lat: -16.92, lon: 145.77 },
+  { name: 'HBA', lat: -42.88, lon: 147.33 },
+]
 
-const CLIENT_ID     = process.env.OPENSKY_CLIENT_ID
-const CLIENT_SECRET = process.env.OPENSKY_CLIENT_SECRET
-
-/* OAuth2 token cache — refresh 30s before expiry */
-let tokenCache = { value: null, expiresAt: 0 }
-
-async function getBearerToken() {
-  if (Date.now() < tokenCache.expiresAt - 30_000) return tokenCache.value
-
-  const res = await fetch(TOKEN_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type:    'client_credentials',
-      client_id:     CLIENT_ID,
-      client_secret: CLIENT_SECRET,
-    }),
-    signal: AbortSignal.timeout(8_000),
-  })
-
-  if (!res.ok) throw new Error(`OpenSky token ${res.status}`)
-  const data = await res.json()
-  tokenCache = { value: data.access_token, expiresAt: Date.now() + data.expires_in * 1_000 }
-  console.log('[FLIGHTS] OAuth2 token refreshed')
-  return tokenCache.value
+function parseAircraft(ac) {
+  if (typeof ac.alt_baro !== 'number') return null  // 'ground' or missing — skip, mirrors prior onGround filter
+  if (ac.lat == null || ac.lon == null) return null
+  return {
+    icao24:   ac.hex,
+    callsign: (ac.flight || '').trim(),
+    country:  null,
+    lon:      ac.lon,
+    lat:      ac.lat,
+    altitude: ac.alt_baro * FT_TO_M,
+    onGround: false,
+    velocity: (ac.gs ?? 0) * KT_TO_MS,
+    heading:  ac.track ?? 0,
+  }
 }
 
-function parseStates(states) {
-  return (states || [])
-    .map(s => ({
-      icao24:   s[0],
-      callsign: (s[1] || '').trim(),
-      country:  s[2],
-      lon:      s[5],
-      lat:      s[6],
-      altitude: s[7],
-      onGround: s[8],
-      velocity: s[9],
-      heading:  s[10] ?? 0,
-    }))
-    .filter(f => f.lat !== null && f.lon !== null && !f.onGround)
+async function fetchRegion(center) {
+  const url = `https://api.airplanes.live/v2/point/${center.lat}/${center.lon}/${RADIUS_NM}`
+  const res = await fetch(url, {
+    headers: { 'User-Agent': USER_AGENT },
+    signal: AbortSignal.timeout(10_000),
+  })
+  if (!res.ok) throw new Error(`airplanes.live HTTP ${res.status} (${center.name})`)
+  const data = await res.json()
+  return data.ac || []
 }
 
 export function startFlightsPoller(broadcast, store) {
-  const useAuth = CLIENT_ID && CLIENT_SECRET
-
   async function poll() {
     try {
-      const headers = {}
-      if (useAuth) {
-        const token = await getBearerToken()
-        headers.Authorization = `Bearer ${token}`
+      const results = await Promise.allSettled(CENTERS.map(fetchRegion))
+
+      const byIcao = new Map()
+      for (const result of results) {
+        if (result.status !== 'fulfilled') continue
+        for (const ac of result.value) {
+          const flight = parseAircraft(ac)
+          if (flight) byIcao.set(flight.icao24, flight)
+        }
       }
 
-      const res = await fetch(OPENSKY_URL, { headers, signal: AbortSignal.timeout(10_000) })
-      if (!res.ok) throw new Error(`OpenSky HTTP ${res.status}`)
-
-      const data    = await res.json()
-      const flights = parseStates(data.states)
+      const flights = [...byIcao.values()]
       if (store) store.flights = flights
       broadcast('flights', flights)
-      console.log(`[FLIGHTS] ${flights.length} aircraft in AU airspace${useAuth ? ' (authenticated)' : ''}`)
+
+      const failedRegions = results.filter(r => r.status === 'rejected').length
+      const suffix = failedRegions ? ` (${failedRegions}/${CENTERS.length} regions failed)` : ''
+      console.log(`[FLIGHTS] ${flights.length} aircraft in AU airspace${suffix}`)
     } catch (err) {
       console.warn('[FLIGHTS] Poll failed:', err.message)
     }

@@ -22,6 +22,7 @@ import { startThreatIndexPoller }                     from './server/routes/thre
 import { startRoadClosuresPoller }                    from './server/routes/roadClosures.js'
 import { startPortCongestionPoller }                  from './server/routes/portCongestion.js'
 import { startEnergyOutagesPoller }                   from './server/routes/energyOutages.js'
+import { startNbnStatusPoller }                       from './server/routes/nbnStatus.js'
 import { startEmergencyAlertsPoller }                 from './server/routes/emergencyAlerts.js'
 import { startEmergencyImpactPoller }                 from './server/routes/emergencyImpact.js'
 import { startEmergencyCrossCheckPoller }             from './server/routes/emergencyCrossCheck.js'
@@ -129,6 +130,8 @@ wss.on('connection', (ws) => {
     ws.send(JSON.stringify({ type: 'emergency_impact', payload: store.emergencyImpact }))
   if (store.emergencyCrossCheck)
     ws.send(JSON.stringify({ type: 'emergency_cross_check', payload: store.emergencyCrossCheck }))
+  if (store.nbnStatus)
+    ws.send(JSON.stringify({ type: 'nbn_status', payload: store.nbnStatus }))
 })
 
 /* ─────────────────────────────────────────────
@@ -160,6 +163,10 @@ app.post('/api/force-poll', async (_, res) => {
   console.log('[API] Force poll triggered')
   await runAllPollers()
   res.json({ ok: true })
+})
+
+app.get('/api/nbn-status', noCache, (_, res) => {
+  res.json(store.nbnStatus ?? null)
 })
 
 app.get('/api/energy', noCache, (_, res) => {
@@ -456,6 +463,9 @@ async function bootstrap() {
 
   // Emergency cross-check — validates the 7 direct agency feeds against EmergencyAPI.com's aggregation (diagnostic only)
   startEmergencyCrossCheckPoller(broadcast, store)
+
+  // NBN status — national up/down + 30-day incident count via StatusGator (requires STATUSGATOR_TOKEN/STATUSGATOR_BOARD_ID)
+  startNbnStatusPoller(broadcast, store)
 
   // ✅ Only NOW open the port
   server.listen(PORT, () => {

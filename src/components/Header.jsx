@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Activity, Wifi, Rss } from 'lucide-react'
 
-export default function Header({ feedStats, threatIndex, onThreatClick }) {
+export default function Header({ feedStats, threatIndex, nbnStatus, onThreatClick }) {
   const [time, setTime]           = useState(new Date())
   const [linkStatus, setLinkStatus] = useState('ONLINE')
 
@@ -56,6 +56,18 @@ export default function Header({ feedStats, threatIndex, onThreatClick }) {
           <Activity size={11} />
           <span className="header-stat-label">LINK {linkStatus}</span>
         </div>
+
+        {/* NBN national status — StatusGator-derived, binary up/down only (no geographic data exists publicly) */}
+        {nbnStatus && (
+          <div
+            className="header-stat"
+            style={{ color: nbnStatus.status === 'up' ? 'var(--accent-green)' : 'var(--accent-red)' }}
+            title={`NBN (via StatusGator) · ${nbnStatus.incidentCount30d} incident(s) in last 30 days — national status only, not geographic`}
+          >
+            <Wifi size={11} />
+            <span className="header-stat-label">NBN {nbnStatus.status?.toUpperCase()}</span>
+          </div>
+        )}
 
         {/* Feeds scanned */}
         <div className="header-stat">

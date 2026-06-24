@@ -25,6 +25,7 @@ export default function App() {
   const [roadClosures, setRoadClosures] = useState([])
   const [emergencyAlerts, setEmergencyAlerts] = useState([])
   const [emergencyImpact, setEmergencyImpact] = useState(null)
+  const [nbnStatus, setNbnStatus] = useState(null)
   const [warningFocusSignal, setWarningFocusSignal] = useState(0)
   const [mobilePanel, setMobilePanel] = useState('map')
   const wsRef = useRef(null)
@@ -60,6 +61,7 @@ export default function App() {
           if (msg.type === 'road_closures') setRoadClosures(msg.payload)
           if (msg.type === 'emergency_alerts') setEmergencyAlerts(msg.payload)
           if (msg.type === 'emergency_impact') setEmergencyImpact(msg.payload)
+          if (msg.type === 'nbn_status') setNbnStatus(msg.payload)
         } catch {}
       }
 
@@ -79,7 +81,7 @@ export default function App() {
   useEffect(() => {
     const poll = async () => {
       try {
-        const [newsRes, finRes, weatherRes, energyRes, absRes, vitalsRes, flightsRes, shipsRes, firesRes, floodsRes, seismicRes, threatRes, roadRes, emergencyRes, impactRes] = await Promise.allSettled([
+        const [newsRes, finRes, weatherRes, energyRes, absRes, vitalsRes, flightsRes, shipsRes, firesRes, floodsRes, seismicRes, threatRes, roadRes, emergencyRes, impactRes, nbnRes] = await Promise.allSettled([
           fetch('/api/news').then(r => r.json()),
           fetch('/api/financial').then(r => r.json()),
           fetch('/api/weather').then(r => r.json()),
@@ -95,6 +97,7 @@ export default function App() {
           fetch('/api/road-closures').then(r => r.json()),
           fetch('/api/emergency-alerts').then(r => r.json()),
           fetch('/api/emergency-impact').then(r => r.json()),
+          fetch('/api/nbn-status').then(r => r.json()),
         ])
         if (newsRes.status === 'fulfilled' && newsRes.value?.items) setNewsItems(newsRes.value.items)
         if (finRes.status === 'fulfilled') setFinancial(finRes.value)
@@ -115,6 +118,7 @@ export default function App() {
         if (roadRes.status === 'fulfilled' && Array.isArray(roadRes.value)) setRoadClosures(roadRes.value)
         if (emergencyRes.status === 'fulfilled' && Array.isArray(emergencyRes.value)) setEmergencyAlerts(emergencyRes.value)
         if (impactRes.status === 'fulfilled' && impactRes.value) setEmergencyImpact(impactRes.value)
+        if (nbnRes.status === 'fulfilled' && nbnRes.value) setNbnStatus(nbnRes.value)
       } catch { /* server not up yet in pure client dev mode — use mock data */ }
     }
 
@@ -128,13 +132,13 @@ export default function App() {
   }
 
   const handleThreatClick = () => {
-    setMobilePanel('map')
+    setMobilePanel('news')
     setWarningFocusSignal(s => s + 1)
   }
 
   return (
     <div className="app-shell">
-      <Header feedStats={feedStats} threatIndex={threatIndex} onThreatClick={handleThreatClick} />
+      <Header feedStats={feedStats} threatIndex={threatIndex} nbnStatus={nbnStatus} onThreatClick={handleThreatClick} />
       <MobileNav active={mobilePanel} onChange={setMobilePanel} />
 
       <div className="body-grid" data-active-panel={mobilePanel}>

@@ -57,40 +57,61 @@ function summarise(flights, iata, name) {
   }
 }
 
+function runOpenSkyFallback(broadcast, store) {
+  // Fallback: derive TCA traffic from live OpenSky positions already in store.flights
+  console.log('[FIDS] Using OpenSky live position fallback')
+  function poll() {
+    if (!store.flights?.length) return
+    store.fids = deriveFromFlights(store.flights)
+    broadcast('fids', store.fids)
+    const total = Object.values(store.fids).reduce((s, a) => s + a.departures, 0)
+    console.log(`[FIDS] Derived ${total} TCA movements from ${store.flights.length} live flights`)
+  }
+  setTimeout(poll, 15_000)  // wait for first OpenSky poll
+  setInterval(poll, POLL_MS_FALLBACK)
+}
+
 export function startFidsPoller(broadcast, store) {
   const key = process.env.AIRLABS_KEY
 
-  if (key) {
-    async function pollAirport(airport) {
-      try {
-        const res = await fetch(buildUrl(airport.iata, key), { signal: AbortSignal.timeout(10_000) })
-        if (!res.ok) throw new Error(`AirLabs HTTP ${res.status}`)
-        const data    = await res.json()
-        const summary = summarise(data.response, airport.iata, airport.name)
-        store.fids = { ...(store.fids ?? {}), [airport.iata]: summary }
-        broadcast('fids', store.fids)
-        console.log(`[FIDS] ${airport.iata}: ${summary.departures} deps, ${summary.delayed} delayed`)
-      } catch (err) {
-        console.warn(`[FIDS] ${airport.iata} failed:`, err.message)
+  if (!key) {
+    console.log('[FIDS] No AIRLABS_KEY — using OpenSky live position fallback')
+    runOpenSkyFallback(broadcast, store)
+    return
+  }
+
+  let quotaExceeded = false
+  const timers = []
+
+  async function pollAirport(airport) {
+    if (quotaExceeded) return
+    try {
+      const res  = await fetch(buildUrl(airport.iata, key), { signal: AbortSignal.timeout(10_000) })
+      const data = await res.json()
+      // AirLabs returns HTTP 200 with an { error } body for auth/quota failures,
+      // so res.ok alone can't be trusted — without this check, a quota error
+      // resolves to an empty `response` array and gets summarised as 0 departures.
+      if (!res.ok || data.error) throw new Error(data.error?.message || `AirLabs HTTP ${res.status}`)
+
+      const summary = summarise(data.response, airport.iata, airport.name)
+      store.fids = { ...(store.fids ?? {}), [airport.iata]: summary }
+      broadcast('fids', store.fids)
+      console.log(`[FIDS] ${airport.iata}: ${summary.departures} deps, ${summary.delayed} delayed`)
+    } catch (err) {
+      console.warn(`[FIDS] ${airport.iata} failed:`, err.message)
+      if (/limit|quota/i.test(err.message) && !quotaExceeded) {
+        quotaExceeded = true
+        console.warn('[FIDS] AirLabs quota exhausted — switching to OpenSky fallback for this session')
+        timers.forEach(clearInterval)
+        runOpenSkyFallback(broadcast, store)
       }
     }
-    AIRPORTS.forEach((airport, i) => {
-      setTimeout(() => {
-        pollAirport(airport)
-        setInterval(() => pollAirport(airport), POLL_MS_AIRLABS)
-      }, i * 2_000)
-    })
-  } else {
-    // Fallback: derive TCA traffic from live OpenSky positions already in store.flights
-    console.log('[FIDS] No AIRLABS_KEY — using OpenSky live position fallback')
-    function poll() {
-      if (!store.flights?.length) return
-      store.fids = deriveFromFlights(store.flights)
-      broadcast('fids', store.fids)
-      const total = Object.values(store.fids).reduce((s, a) => s + a.departures, 0)
-      console.log(`[FIDS] Derived ${total} TCA movements from ${store.flights.length} live flights`)
-    }
-    setTimeout(poll, 15_000)  // wait for first OpenSky poll
-    setInterval(poll, POLL_MS_FALLBACK)
   }
+
+  AIRPORTS.forEach((airport, i) => {
+    timers.push(setTimeout(() => {
+      pollAirport(airport)
+      timers.push(setInterval(() => pollAirport(airport), POLL_MS_AIRLABS))
+    }, i * 2_000))
+  })
 }

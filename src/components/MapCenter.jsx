@@ -113,13 +113,13 @@ const NATIONAL_INFRA = [
 const INFRA_ICON = { HYDRO: '💧', COAL: '🏭', NUCLEAR: '☢', MINING: '⛏', LNG: '🛢', GRID: '⚡', WIND: '🌀' }
 
 const RAIL_ROUTES = [
-  { name: 'East Coast Main Line', color: '#4caf50',
+  { name: 'East Coast Main Line', color: '#4caf50', route: 'Brisbane → Sydney → Melbourne',
     points: [[-27.47, 153.02], [-33.87, 151.21], [-37.81, 144.97]] },
-  { name: 'The Ghan',            color: '#ff8f00',
+  { name: 'The Ghan',            color: '#ff8f00', route: 'Adelaide → Alice Springs → Darwin',
     points: [[-34.93, 138.60], [-23.70, 133.88], [-12.46, 130.84]] },
-  { name: 'Indian Pacific',      color: '#9c27b0',
+  { name: 'Indian Pacific',      color: '#9c27b0', route: 'Perth → Kalgoorlie → Adelaide → Sydney',
     points: [[-31.95, 115.86], [-30.75, 121.47], [-31.51, 133.03], [-34.93, 138.60], [-33.87, 151.21]] },
-  { name: 'Adelaide–Broken Hill', color: '#00bcd4',
+  { name: 'Adelaide–Broken Hill', color: '#00bcd4', route: 'Adelaide → Broken Hill → Sydney',
     points: [[-34.93, 138.60], [-31.97, 141.46], [-33.87, 151.21]] },
 ]
 
@@ -831,41 +831,75 @@ function TransportPanel({ flights, ships, fids }) {
   const sourceLabel = isAirlabs ? 'AirLabs · scheduled' : isOpenSky ? 'OpenSky · TCA traffic' : null
 
   return (
-    <div style={{ padding: '12px 16px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: 13 }}>
-      <div style={{ display: 'flex', gap: 24, marginBottom: 10 }}>
-        <span style={{ color: 'var(--accent-cyan)' }}>✈ {flights?.length ?? 0} aircraft</span>
-        <span style={{ color: 'var(--accent-green)' }}>🚢 {Object.keys(ships || {}).length > 0 ? Object.keys(ships).length : (ships?.length ?? 0)} vessels</span>
+    <div className="transport-grid">
+      <div style={{ flex: 1, minWidth: 0, padding: '12px 16px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: 13 }}>
+        <div style={{ display: 'flex', gap: 24, marginBottom: 10 }}>
+          <span style={{ color: 'var(--accent-cyan)' }}>✈ {flights?.length ?? 0} aircraft</span>
+          <span style={{ color: 'var(--accent-green)' }}>🚢 {Object.keys(ships || {}).length > 0 ? Object.keys(ships).length : (ships?.length ?? 0)} vessels</span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <span style={{ color: 'var(--accent-cyan)' }}>AIRPORT TRAFFIC</span>
+          {sourceLabel && (
+            <span style={{ fontSize: 10, color: 'var(--accent-green)', border: '1px solid var(--accent-green)', padding: '1px 5px', borderRadius: 3 }}>
+              LIVE · {sourceLabel}
+            </span>
+          )}
+          {!airports.length && (
+            <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>connecting…</span>
+          )}
+        </div>
+
+        {airports.length > 0
+          ? airports.sort((a, b) => b.departures - a.departures).map(a => (
+              <div key={a.iata} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                <span style={{ width: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.iata} — {a.name}</span>
+                <span>{isAirlabs ? 'DEP' : 'TCA'} <span style={{ color: 'var(--accent-blue)' }}>{a.departures}</span></span>
+                {a.delayed != null
+                  ? <span>DLY <span style={{ color: a.delayed > 5 ? 'var(--accent-red)' : 'var(--accent-orange)' }}>{a.delayed}</span></span>
+                  : <span style={{ color: 'var(--text-dim)', fontSize: 11 }}>DLY —</span>
+                }
+              </div>
+            ))
+          : (
+              <div style={{ color: 'var(--text-dim)', fontSize: 11, paddingTop: 4 }}>
+                Waiting for OpenSky data (up to 5 min on first start)
+              </div>
+            )
+        }
       </div>
 
+      <RailNetworkPanel />
+    </div>
+  )
+}
+
+/* ── Interstate rail network — static reference, no live schedule data source ── */
+function RailNetworkPanel() {
+  return (
+    <div className="rail-network-panel" style={{
+      flex: 1, minWidth: 0, padding: '12px 16px',
+      color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: 13,
+    }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        <span style={{ color: 'var(--accent-cyan)' }}>AIRPORT TRAFFIC</span>
-        {sourceLabel && (
-          <span style={{ fontSize: 10, color: 'var(--accent-green)', border: '1px solid var(--accent-green)', padding: '1px 5px', borderRadius: 3 }}>
-            LIVE · {sourceLabel}
-          </span>
-        )}
-        {!airports.length && (
-          <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>connecting…</span>
-        )}
+        <span style={{ color: 'var(--accent-cyan)' }}>INTERSTATE RAIL NETWORK</span>
+        <span style={{ fontSize: 10, color: 'var(--text-dim)', border: '1px solid var(--border)', padding: '1px 5px', borderRadius: 3 }}>
+          STATIC REFERENCE
+        </span>
       </div>
 
-      {airports.length > 0
-        ? airports.sort((a, b) => b.departures - a.departures).map(a => (
-            <div key={a.iata} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-              <span style={{ width: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.iata} — {a.name}</span>
-              <span>{isAirlabs ? 'DEP' : 'TCA'} <span style={{ color: 'var(--accent-blue)' }}>{a.departures}</span></span>
-              {a.delayed != null
-                ? <span>DLY <span style={{ color: a.delayed > 5 ? 'var(--accent-red)' : 'var(--accent-orange)' }}>{a.delayed}</span></span>
-                : <span style={{ color: 'var(--text-dim)', fontSize: 11 }}>DLY —</span>
-              }
-            </div>
-          ))
-        : (
-            <div style={{ color: 'var(--text-dim)', fontSize: 11, paddingTop: 4 }}>
-              Waiting for OpenSky data (up to 5 min on first start)
-            </div>
-          )
-      }
+      {RAIL_ROUTES.map(r => (
+        <div key={r.name} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '5px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+          <span style={{
+            width: 8, height: 8, borderRadius: '50%', marginTop: 4, flexShrink: 0,
+            background: r.color, boxShadow: `0 0 6px ${r.color}`,
+          }} />
+          <div>
+            <div style={{ color: 'var(--text-primary)' }}>{r.name}</div>
+            <div style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{r.route}</div>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -940,7 +974,7 @@ function WarningPanel({ threatIndex, emergencyImpact }) {
                 <div style={{ fontSize: 12.5, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{meta.label}</div>
                 <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
                   {cat.summary}
-                  {aggregate && ` · ~${aggregate.totalPeopleEstimate.toLocaleString('en-AU')} people in affected areas (approx.)`}
+                  {aggregate && ` · Est. Emergency Alert reach: ~${aggregate.totalPeopleEstimate.toLocaleString('en-AU')} people (modeled, not confirmed deliveries)`}
                 </div>
               </div>
               <span style={{
@@ -957,7 +991,7 @@ function WarningPanel({ threatIndex, emergencyImpact }) {
             {isOpen && cat.sources.length > 0 && (
               <div style={{ padding: '2px 8px 6px 30px', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
                 {cat.sources.map((s, i) => {
-                  const narrative = narrativeById[s.id]?.narrative
+                  const impact = narrativeById[s.id]
                   return (
                     <div key={i}>
                       {s.url
@@ -968,9 +1002,15 @@ function WarningPanel({ threatIndex, emergencyImpact }) {
                             — {s.label} {formatSourceTime(s.time) && <span style={{ color: 'var(--text-dim)' }}>({formatSourceTime(s.time)})</span>}
                           </div>
                       }
-                      {narrative && (
+                      {impact && (
+                        <div style={{ fontSize: 11, color: 'var(--text-dim)', padding: '0 0 2px 14px' }}>
+                          <span style={{ color: 'var(--accent-orange)' }}>[modeled]</span> Est. alert zone: ~{impact.radiusKm}km radius
+                          (~{impact.areaKm2.toLocaleString('en-AU')} km², {impact.remotenessClass}) · ~{impact.populationEstimate.toLocaleString('en-AU')} people — not a confirmed AusAlert/Emergency Alert send
+                        </div>
+                      )}
+                      {impact?.narrative && (
                         <div style={{ fontSize: 11, color: 'var(--text-dim)', padding: '0 0 4px 14px', fontStyle: 'italic' }}>
-                          <span style={{ color: 'var(--accent-cyan)', fontStyle: 'normal' }}>[AI estimate]</span> {narrative}
+                          <span style={{ color: 'var(--accent-cyan)', fontStyle: 'normal' }}>[AI estimate]</span> {impact.narrative}
                         </div>
                       )}
                     </div>

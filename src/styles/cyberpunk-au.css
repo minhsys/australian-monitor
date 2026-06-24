@@ -733,6 +733,14 @@ body {
   display: flex;
 }
 
+.transport-grid {
+  display: flex;
+  width: 100%;
+  min-height: 0;
+}
+
+.rail-network-panel { border-left: 1px solid var(--border); }
+
 /* ============================================================
    NEWS PANEL
    ============================================================ */
@@ -1416,7 +1424,14 @@ body {
 
   .body-grid[data-active-panel="map"]   .map-center   { display: flex; }
   .body-grid[data-active-panel="left"]  .left-sidebar  { display: flex; }
+  .body-grid[data-active-panel="news"]  .map-center    { display: flex; }
   .body-grid[data-active-panel="right"] .right-sidebar { display: flex; }
+
+  /* Map tab = map only; the central news/transport/warning panel gets its
+     own full-height News tab instead of sharing space below the map. */
+  .body-grid[data-active-panel="map"]  .map-panel   { display: none; }
+  .body-grid[data-active-panel="news"] .map-wrapper { display: none; }
+  .body-grid[data-active-panel="news"] .map-panel   { flex: 1; height: auto; }
 
   .map-panel { height: 220px; }
 
@@ -1436,6 +1451,9 @@ body {
   .news-panel-top { flex-wrap: wrap; }
 
   .fire-grid { grid-template-columns: repeat(2, 1fr); }
+
+  .transport-grid { flex-direction: column; overflow-y: auto; }
+  .rail-network-panel { border-left: none; border-top: 1px solid var(--border); }
 }
 
 @media (max-width: 480px) {

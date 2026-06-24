@@ -1,6 +1,7 @@
 const PANELS = [
   { id: 'map',   label: 'MAP' },
   { id: 'left',  label: 'MONITOR' },
+  { id: 'news',  label: 'NEWS' },
   { id: 'right', label: 'MARKETS' },
 ]
 

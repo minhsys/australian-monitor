@@ -3,6 +3,7 @@
 Real-time Australian geopolitical, infrastructure, and emergency intelligence dashboard. Live map layers, a composite national threat index, and an AI-generated news brief, all sourced from official and open data feeds — no mock data in production.
 
 **Live demo:** https://australia-monitor-production.up.railway.app
+<img width="2430" height="1286" alt="image" src="https://github.com/user-attachments/assets/293bcb65-6d35-4d26-ad4c-ad981d9cd980" />
 
 ---
 
